@@ -3,7 +3,7 @@ import json
 import os
 import traceback
 from pathlib import Path
-from typing import List, Dict
+from typing import Dict, List
 
 import ray
 from cldk import CLDK
@@ -15,11 +15,10 @@ from hamster.code_analysis.model.models import ProjectAnalysis, TestingFramework
 from hamster.code_analysis.test_statistics import (
     CallAndAssertionSequenceDetailsInfo,
     SetupAnalysisInfo,
-    TestMethodAnalysisInfo,
     TestClassAnalysisInfo,
+    TestMethodAnalysisInfo,
 )
 from hamster.utils.pretty import ProgressBarFactory
-
 
 hamster_analysis_parent_directory = "/home/hamster/xvdc/hamster_results/model"
 cldk_analysis_parent_directory = "/home/hamster/xvdc/analysis"
@@ -38,9 +37,9 @@ class HamsterModelAlterer:
             file_content = json.load(f)
             self.project_analysis = ProjectAnalysis.model_validate(file_content)
         self.store_path = store_path
-        _, self.application_classes = CommonAnalysis(
+        _, self.application_classes, self.test_utility_classes = CommonAnalysis(
             self.analysis
-        ).get_test_methods_classes_and_application_classes()
+        ).categorize_classes()
 
     def alter_focal_class(self):
         """
@@ -63,8 +62,9 @@ class HamsterModelAlterer:
                     ) = FocalClassMethod(
                         analysis=self.analysis,
                         application_classes=self.application_classes,
-                    ).identify_focal_class_and_ui_api_test(
-                        test_class_name=cls.qualified_class_name,
+                        test_utility_classes=self.test_utility_classes,
+                    ).extract_test_scope(
+                        test_qualified_class_name=cls.qualified_class_name,
                         test_method_signature=method.method_signature,
                         setup_methods=setup_methods,
                     )
@@ -81,6 +81,62 @@ class HamsterModelAlterer:
             alter_focal_class=True,
         )
 
+    def alter_focal_classes_test_type_and_project_stats(self):
+        """
+        Alter focal classes, test type, and project-level statistics.
+
+        Updates:
+        - focal_classes and test_type for all TestMethodAnalysis
+        - application_class_count, application_method_count, application_cyclomatic_complexity
+        - test_class_count, test_method_count
+        - test_utility_class_count, test_utility_method_count
+        """
+        self._alter_hamster(
+            alter_call_assertion_sequences=False,
+            alter_class_fixtures=False,
+            alter_test_type=True,
+            alter_focal_class=True,
+            alter_project_stats=True,
+        )
+
+    def _update_project_stats(self) -> None:
+        """Recompute and update project-level statistics from the current analysis."""
+        test_class_methods, application_classes, test_utility_classes = CommonAnalysis(
+            self.analysis
+        ).categorize_classes()
+
+        # Update application_classes for consistency with other alterations
+        self.application_classes = application_classes
+
+        application_method_count = 0
+        application_cyclomatic_complexity = 0
+        for class_name in application_classes:
+            methods = self.analysis.get_methods_in_class(class_name)
+            application_method_count += len(methods)
+            for method_details in methods.values():
+                if method_details.cyclomatic_complexity:
+                    application_cyclomatic_complexity += (
+                        method_details.cyclomatic_complexity
+                    )
+
+        test_utility_method_count = 0
+        for class_name in test_utility_classes:
+            methods = self.analysis.get_methods_in_class(class_name)
+            test_utility_method_count += len(methods)
+
+        test_class_count = len(test_class_methods)
+        test_method_count = sum(len(methods) for methods in test_class_methods.values())
+
+        self.project_analysis.application_class_count = len(application_classes)
+        self.project_analysis.application_method_count = application_method_count
+        self.project_analysis.application_cyclomatic_complexity = (
+            application_cyclomatic_complexity
+        )
+        self.project_analysis.test_class_count = test_class_count
+        self.project_analysis.test_method_count = test_method_count
+        self.project_analysis.test_utility_class_count = len(test_utility_classes)
+        self.project_analysis.test_utility_method_count = test_utility_method_count
+
     def _alter_hamster(
         self,
         *,
@@ -88,6 +144,7 @@ class HamsterModelAlterer:
         alter_class_fixtures: bool,
         alter_test_type: bool,
         alter_focal_class: bool,
+        alter_project_stats: bool = False,
     ) -> None:
         if alter_test_type != alter_focal_class:
             raise NotImplementedError(
@@ -99,8 +156,12 @@ class HamsterModelAlterer:
             and not alter_class_fixtures
             and not alter_test_type
             and not alter_focal_class
+            and not alter_project_stats
         ):
             return
+
+        if alter_project_stats:
+            self._update_project_stats()
 
         dataset_name = self.project_analysis.dataset_name
         test_class_analysis = None
@@ -113,6 +174,7 @@ class HamsterModelAlterer:
                 analysis=self.analysis,
                 dataset_name=dataset_name,
                 application_classes=self.application_classes,
+                test_utility_classes=self.test_utility_classes,
             )
 
         if alter_call_assertion_sequences:
@@ -125,6 +187,7 @@ class HamsterModelAlterer:
                 analysis=self.analysis,
                 dataset_name=dataset_name,
                 application_classes=self.application_classes,
+                test_utility_classes=self.test_utility_classes,
             )
             setup_analysis = SetupAnalysisInfo(self.analysis)
 
@@ -134,6 +197,7 @@ class HamsterModelAlterer:
                 total=len(self.project_analysis.test_class_analyses),
             ):
                 if alter_class_fixtures:
+                    assert test_class_analysis is not None
                     cls.setup_analyses = test_class_analysis.get_setup_analysis_info(
                         test_class_qualified_name=cls.qualified_class_name
                     )
@@ -153,19 +217,24 @@ class HamsterModelAlterer:
                 testing_frameworks = cls.testing_frameworks
                 setup_methods = None
                 if alter_test_type and alter_focal_class:
+                    assert setup_analysis is not None
                     setup_methods = setup_analysis.get_setup_methods(
                         qualified_class_name=cls.qualified_class_name,
                     )
 
                 for method in cls.test_method_analyses:
                     if alter_call_assertion_sequences:
+                        assert call_assertion_details is not None
                         method.call_assertion_sequences = call_assertion_details.get_call_and_assertion_sequence_details_info(
                             qualified_class_name=cls.qualified_class_name,
                             method_signature=method.method_signature,
                             testing_frameworks=testing_frameworks,
+                            test_utility_classes=self.test_utility_classes,
                         )
 
                     if alter_test_type and alter_focal_class:
+                        assert test_method_analysis is not None
+                        assert setup_methods is not None
                         test_type, focal_classes = (
                             test_method_analysis.get_test_type_focal_classes(
                                 cls.qualified_class_name,
@@ -265,6 +334,7 @@ class HamsterModelAlterer:
                         method_signature,
                         add_extended_class=True,
                         allow_repetition=True,
+                        test_utility_classes=self.test_utility_classes,
                     )
 
                     all_methods = helper_methods
@@ -324,6 +394,7 @@ class HamsterModelAlterer:
                         method_signature,
                         add_extended_class=True,
                         allow_repetition=True,
+                        test_utility_classes=self.test_utility_classes,
                     )
                     all_methods = helper_methods
                     helper_method_count = 0
@@ -381,6 +452,7 @@ class HamsterModelAlterer:
                         method_signature,
                         add_extended_class=True,
                         allow_repetition=True,
+                        test_utility_classes=self.test_utility_classes,
                     )
 
                     all_methods = helper_methods
@@ -442,6 +514,7 @@ class HamsterModelAlterer:
                         method_signature,
                         add_extended_class=True,
                         allow_repetition=True,
+                        test_utility_classes=self.test_utility_classes,
                     )
 
                     all_methods = helper_methods
@@ -509,6 +582,7 @@ class HamsterModelAlterer:
                         method_signature,
                         add_extended_class=True,
                         allow_repetition=True,
+                        test_utility_classes=self.test_utility_classes,
                     )
 
                     all_methods = helper_methods
@@ -579,7 +653,8 @@ def alter_hamster_model(file):
         # alterer.alter_method_for_helper_methods()
         # alterer.alter_testing_framework()
         # alterer.alter_class_fixtures()
-        alterer.alter_call_assert_seq_and_class_fixture_and_test_type_and_focal_method()
+        # alterer.alter_call_assert_seq_and_class_fixture_and_test_type_and_focal_method()
+        alterer.alter_focal_classes_test_type_and_project_stats()
 
         alterer.save()
 

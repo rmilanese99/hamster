@@ -1,3 +1,10 @@
+
+[submodule "tests/resources/commons-cli"]
+	path = tests/resources/commons-cli
+	url = https://github.com/apache/commons-cli.git
+[submodule "tests/resources/commons-bsf"]
+	path = tests/resources/commons-bsf
+	url = https://github.com/apache/commons-bsf.git
 [submodule "tests/resources/spring-petclinic"]
 	path = tests/resources/spring-petclinic
 	url = https://github.com/spring-projects/spring-petclinic.git

@@ -2,8 +2,6 @@ import subprocess
 import traceback
 from pathlib import Path
 
-from hamster.utils.output_format import OutputFormatType
-
 def main():
     script_dir = Path(__file__).resolve().parent
     root = script_dir.parent.parent
@@ -12,14 +10,14 @@ def main():
     hamster_results = root / "xvdc" / "hamster_results"
     model_dir = hamster_results / "model"
     statistics_dir = hamster_results / "statistics"
-    output_format = OutputFormatType.JSON_PDF_FIGURES
+    output_format = "json_pdf_figures"
 
     cmd = [
-        "poetry", "run",
+        "uv", "run",
         "python", "-m", "hamster.cli", "statistics",
         "--hamster-analysis-parent-directory", str(model_dir),
         "--statistics-store-path", str(statistics_dir),
-        "--output-format", output_format.value,
+        "--output-format", output_format,
     ]
 
     print("Attempting to generate statistics...")

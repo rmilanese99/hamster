@@ -2,25 +2,25 @@ import heapq
 import itertools
 import math
 import string
-from collections import Counter
-from dataclasses import dataclass, field, asdict
-from pathlib import Path
-from typing import List, Dict, Any, Tuple
-import seaborn as sns
-from matplotlib.cm import Pastel1
-import numpy as np
-from matplotlib import pyplot as plt
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
-from upsetplot import from_memberships, UpSet
 import warnings
+from collections import Counter
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Any, Dict, List, Tuple
+
+import matplotlib.colors as mcolors
+import pandas as pd
+import numpy as np
+import seaborn as sns
+from matplotlib import pyplot as plt
+from matplotlib.cm import Pastel1
+from upsetplot import UpSet, from_memberships
 
 from hamster.code_analysis.utils import constants
 from hamster.utils.pretty import RichLog
 
 
 class ExtractStatisticsUtils:
-
     def __init__(self, filepath: Path):
         self.filepath = filepath
 
@@ -39,18 +39,18 @@ class ExtractStatisticsUtils:
         """
         # Counters for match categories
         order_inde_matches = {
-            '100% match': 0,
-            '>=70% match': 0,
-            '>=50% match': 0,
-            '>=30% match': 0,
-            '<30% match': 0
+            "100% match": 0,
+            ">=70% match": 0,
+            ">=50% match": 0,
+            ">=30% match": 0,
+            "<30% match": 0,
         }
         order_de_matches = {
-            '100% match': 0,
-            '>=70% match': 0,
-            '>=50% match': 0,
-            '>=30% match': 0,
-            '<30% match': 0
+            "100% match": 0,
+            ">=70% match": 0,
+            ">=50% match": 0,
+            ">=30% match": 0,
+            "<30% match": 0,
         }
 
         # Track best match for each list
@@ -83,15 +83,15 @@ class ExtractStatisticsUtils:
     @staticmethod
     def categorize(score):
         if score == 100:
-            return '100% match'
+            return "100% match"
         elif score >= 70:
-            return '>=70% match'
+            return ">=70% match"
         elif score >= 50:
-            return '>=50% match'
+            return ">=50% match"
         elif score >= 30:
-            return '>=30% match'
+            return ">=30% match"
         else:
-            return '<30% match'
+            return "<30% match"
 
     def get_percentiles_per_type(self, data: dict) -> dict:
         """
@@ -121,44 +121,63 @@ class ExtractStatisticsUtils:
         if len(data) == 0:
             return {}
         percentiles = np.percentile(data, [25, 50, 75, 90])
-        return {"P25": percentiles[0],
-                "P50": percentiles[1],
-                "P75": percentiles[2],
-                "P90": percentiles[3]}
+        return {
+            "P25": percentiles[0],
+            "P50": percentiles[1],
+            "P75": percentiles[2],
+            "P90": percentiles[3],
+        }
 
     @staticmethod
     def get_summary_stats(data: List[float]) -> dict:
         if not data:
-            return {'mean': 0.0, 'min': 0.0, 'max': 0.0, 'p25': 0.0, 'p50': 0.0, 'p75': 0.0, 'p90': 0.0}
+            return {
+                "mean": 0.0,
+                "min": 0.0,
+                "max": 0.0,
+                "p25": 0.0,
+                "p50": 0.0,
+                "p75": 0.0,
+                "p90": 0.0,
+            }
 
         percentiles = np.percentile(data, [25, 50, 75, 90])
         return {
-            'mean': float(np.mean(data)),
-            'min': float(np.min(data)),
-            'max': float(np.max(data)),
-            'p25': float(percentiles[0]),
-            'p50': float(percentiles[1]),
-            'p75': float(percentiles[2]),
-            'p90': float(percentiles[3]),
+            "mean": float(np.mean(data)),
+            "min": float(np.min(data)),
+            "max": float(np.max(data)),
+            "p25": float(percentiles[0]),
+            "p50": float(percentiles[1]),
+            "p75": float(percentiles[2]),
+            "p90": float(percentiles[3]),
         }
 
     @staticmethod
     def get_percentage_dict(count_dict: dict[str, int]) -> dict[str, float]:
         total = sum(count_dict.values())
         if total == 0:
-            return {key : 0.0 for key in count_dict}
+            return {key: 0.0 for key in count_dict}
         return {key: (value / total) for key, value in count_dict.items()}
 
     @staticmethod
     def get_distribution_percentage(elements: list) -> dict:
+        if not elements:
+            return {}
         counts = Counter(elements)
         total_elements = len(elements)
-        percentages = {element: (count / total_elements) * 100 for element, count in counts.items()}
+        percentages = {
+            element: (count / total_elements) * 100 for element, count in counts.items()
+        }
         return percentages
 
-    def multiple_thin_box_plot(self, list_of_dicts: list, filename: str, figure_names:List[str]=[],
-                               box_plot_types=constants.BOX_PLOT_TYPES,
-                               is_scale=True) -> None:
+    def multiple_thin_box_plot(
+        self,
+        list_of_dicts: list,
+        filename: str,
+        figure_names: List[str] = [],
+        box_plot_types=constants.BOX_PLOT_TYPES,
+        is_scale=True,
+    ) -> None:
         # Step 1: Collect all cleaned values to determine global y-limit
         all_cleaned_values = []
         for d in list_of_dicts:
@@ -170,6 +189,9 @@ class ExtractStatisticsUtils:
                         cleaned = d[key]
                     all_cleaned_values.extend(cleaned)
 
+        if not all_cleaned_values:
+            return
+
         # Use percentile range to cap (exclude extremes)
         if is_scale:
             y_min, y_max = np.percentile(all_cleaned_values, [5, 95])  #
@@ -180,34 +202,50 @@ class ExtractStatisticsUtils:
         # Setup subplots side by side
         n_plots = len(list_of_dicts)
         ncols = math.ceil(n_plots)
-        fig, axes = plt.subplots(1, ncols, figsize=(ncols*1.5, 4), sharey=True)
+        fig, axes = plt.subplots(1, ncols, figsize=(ncols * 1.5, 4), sharey=True)
 
-        # Flatten axes for easy looping
-        axes = axes.flatten()
+        # Ensure axes is always iterable (single subplot returns Axes, not array)
+        axes = np.atleast_1d(axes)
 
         # Define pastel colors
         pastel_colors = list(mcolors.TABLEAU_COLORS.values())
         # Subplot labels like (a), (b), ...
         if len(figure_names) == len(list_of_dicts):
-            subplot_labels = [fig.replace(' ', '\n').replace('_', ' ') for fig in figure_names]
+            subplot_labels = [
+                fig.replace(" ", "\n").replace("_", " ") for fig in figure_names
+            ]
         else:
-            subplot_labels = ['('+a+')' for a in list(string.ascii_lowercase)]
+            subplot_labels = ["(" + a + ")" for a in list(string.ascii_lowercase)]
         # Loop through each dictionary and subplot
         for i, (data_dict, ax) in enumerate(zip(list_of_dicts, axes)):
             # Clean and filter data
             filtered_dict = {k: data_dict[k] for k in box_plot_types if k in data_dict}
-            cleaned_data_dict = {k: self.remove_outliers_iqr(np.asarray(v)) for k, v in filtered_dict.items()}
-            data = list(cleaned_data_dict.values())
+            cleaned_data_dict = {
+                k: self.remove_outliers_iqr(np.asarray(v))
+                for k, v in filtered_dict.items()
+            }
+            # Filter out empty arrays to avoid boxplot length mismatch
+            data = [v for v in cleaned_data_dict.values() if len(v) > 0]
+
+            if not data:
+                continue
+
             positions = np.arange(1, len(data) + 1) * 0.5
 
             # Create boxplot on this axis
-            box = ax.boxplot(data, widths=0.2, patch_artist=True, showmeans=False, positions=positions)
+            box = ax.boxplot(
+                data,
+                widths=0.2,
+                patch_artist=True,
+                showmeans=False,
+                positions=positions,
+            )
 
             # Apply color and red median
-            for patch, color in zip(box['boxes'], pastel_colors):
+            for patch, color in zip(box["boxes"], pastel_colors):
                 patch.set_facecolor(color)
-            for median in box['medians']:
-                median.set(color='black', linewidth=4)
+            for median in box["medians"]:
+                median.set(color="black", linewidth=4)
 
             # Set labels and title
             ax.set_xticks(positions)
@@ -215,16 +253,21 @@ class ExtractStatisticsUtils:
             # Label each subplot BELOW with (a), (b), ...
             ax.set_xlabel(f"{subplot_labels[i]}", fontsize=10)
             ax.set_ylim(y_min, y_max)  # Cap y-axis
-            ax.grid(True, axis='y')
+            ax.grid(True, axis="y")
         # plt.yticks(fontsize=6)
         plt.tight_layout()
-        plt.savefig(self.filepath.joinpath(filename + '.pdf'), format='pdf', bbox_inches='tight')
+        plt.savefig(
+            self.filepath.joinpath(filename + ".pdf"), format="pdf", bbox_inches="tight"
+        )
         plt.close()
 
-
     def upset_diagram(self, dictionary: dict, filename: str) -> None:
-        if '' in dictionary:
-            del dictionary['']
+        if "" in dictionary:
+            del dictionary[""]
+
+        if len(dictionary) < 2:
+            return
+
         set_names = list(dictionary.keys())
 
         # Build a mapping from item to which sets it appears in
@@ -233,34 +276,56 @@ class ExtractStatisticsUtils:
             for item in items:
                 item_to_sets.setdefault(item, set()).add(set_names[set_index])
 
+        if not item_to_sets:
+            return
+
         # Create membership data
         memberships = list(item_to_sets.values())
+
+        if len(memberships) < 2:
+            return
+
         data = from_memberships(memberships)
 
-        # 4. Plot using only relevant sets
-        plt.figure(figsize=(10, 6))
+        # UpSet requires a MultiIndex; skip if from_memberships returned a regular Index
+        if not isinstance(data.index, pd.MultiIndex):
+            return
+
         plt.rcParams["font.size"] = 12
         upset = UpSet(
             data,
-            subset_size='count',
+            subset_size="count",
             show_counts=True,
-            sort_by='cardinality',
-            # orientation='horizontal',
-            intersection_plot_elements=10
+            sort_by="cardinality",
+            intersection_plot_elements=10,
         )
-        # Some versions of upsetplot trigger pandas FutureWarnings (e.g., chained
-        # assignment with inplace=True). Suppress those here to keep output clean.
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=FutureWarning, module=r"upsetplot.*")
-            upset.plot()
+        try:
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore", category=FutureWarning, module=r"upsetplot.*"
+                )
+                fig = plt.figure(figsize=(10, 6))
+                upset.plot(fig=fig)
 
-        plt.savefig(self.filepath.joinpath(filename + '.pdf'), format='pdf', bbox_inches='tight')
-        plt.close()
+            fig.savefig(
+                self.filepath.joinpath(filename + ".pdf"), format="pdf", bbox_inches="tight"
+            )
+            plt.close(fig)
+        except (TypeError, ValueError):
+            plt.close("all")
 
     def thin_box_plot(self, input_data: dict, filename: str):
-        filtered_dict = {k: input_data[k] for k in constants.BOX_PLOT_TYPES if k in input_data}
-        cleaned_data_dict = {k: self.remove_outliers_iqr(np.asarray(v)) for k, v in filtered_dict.items()}
-        data = list(cleaned_data_dict.values())
+        filtered_dict = {
+            k: input_data[k] for k in constants.BOX_PLOT_TYPES if k in input_data
+        }
+        cleaned_data_dict = {
+            k: self.remove_outliers_iqr(np.asarray(v)) for k, v in filtered_dict.items()
+        }
+        # Filter out empty arrays to avoid boxplot length mismatch
+        data = [v for v in cleaned_data_dict.values() if len(v) > 0]
+
+        if not data:
+            return
 
         # Define pastel colors (using Tableau palette)
         pastel_colors = list(mcolors.TABLEAU_COLORS.values())
@@ -271,38 +336,61 @@ class ExtractStatisticsUtils:
 
         # Create the plot
         plt.figure(figsize=(2, 2))
-        box = plt.boxplot(data, widths=0.05, patch_artist=True, showmeans=False, positions=positions)
+        box = plt.boxplot(
+            data, widths=0.05, patch_artist=True, showmeans=False, positions=positions
+        )
 
         # Color the boxes
-        for patch, color in zip(box['boxes'], pastel_colors):
+        for patch, color in zip(box["boxes"], pastel_colors):
             patch.set_facecolor(color)
 
         # Highlight medians in red
-        for median in box['medians']:
-            median.set(color='red', linewidth=2)
+        for median in box["medians"]:
+            median.set(color="red", linewidth=2)
 
         # Correctly aligned x-axis labels
-        plt.xticks(ticks=positions, labels=[str(i + 1) for i in range(len(data))], fontsize=8)
+        plt.xticks(
+            ticks=positions, labels=[str(i + 1) for i in range(len(data))], fontsize=8
+        )
         plt.yticks(fontsize=6)
         # Add grid and title
         # Save as PDF
-        plt.savefig(self.filepath.joinpath(filename + '.pdf'), format='pdf', bbox_inches='tight')
+        plt.savefig(
+            self.filepath.joinpath(filename + ".pdf"), format="pdf", bbox_inches="tight"
+        )
         plt.close()
 
-    def get_distribution_figures(self, elements: list, xlabel: str, ylabel: str, title: str, filename: str) -> None:
+    def get_distribution_figures(
+        self, elements: list, xlabel: str, ylabel: str, title: str, filename: str
+    ) -> None:
+        if not elements:
+            return
+
         # Plotting the bar chart
         plt.figure(figsize=(8, 6))
         distribution = self.get_distribution_percentage(elements)
         percentages = list(distribution.values())
-        bars = plt.bar(list(distribution.keys()), percentages, color='#4589ff')
-        if len(list(distribution.keys())) > 5 or any(len(label) > 10 for label in list(distribution.keys())):
+
+        if not percentages:
+            plt.close()
+            return
+
+        keys = list(distribution.keys())
+        bars = plt.bar(keys, percentages, color="#4589ff")
+        if len(keys) > 5 or any(len(str(label)) > 10 for label in keys):
             fontsize = 3.5  # Smaller font
         else:
             fontsize = 12  # Default
         # Adding percentage labels on each bar
         for bar in bars:
             yval = bar.get_height()
-            plt.text(bar.get_x() + bar.get_width() / 2, yval + 1, f'{yval:.2f}%', ha='center', va='bottom')
+            plt.text(
+                bar.get_x() + bar.get_width() / 2,
+                yval + 1,
+                f"{yval:.2f}%",
+                ha="center",
+                va="bottom",
+            )
 
         # Axis labels and title
         plt.xlabel(xlabel)
@@ -310,11 +398,13 @@ class ExtractStatisticsUtils:
         plt.title(title)
         plt.xticks(fontsize=fontsize)
         # Grid and limits to mimic MATLAB style
-        plt.grid(True, linestyle='--', alpha=0.7)
+        plt.grid(True, linestyle="--", alpha=0.7)
         plt.ylim(0, max(percentages) + 10)
 
         # Save as PDF
-        plt.savefig(self.filepath.joinpath(filename + '.pdf'), format='pdf', bbox_inches='tight')
+        plt.savefig(
+            self.filepath.joinpath(filename + ".pdf"), format="pdf", bbox_inches="tight"
+        )
 
         plt.close()
 
@@ -322,65 +412,68 @@ class ExtractStatisticsUtils:
     def __inlier_mask(arr):
         """
         Outliers are removed per pair of variables with the IQR rule
-        (value < Q1 – 1.5·IQR or value > Q3 + 1.5·IQR).
-        Args:
-            arr:
-
-        Returns:
-
+        (value < Q1 - 1.5*IQR or value > Q3 + 1.5*IQR).
         """
+        if len(arr) == 0:
+            return np.array([], dtype=bool)
         q1, q3 = np.percentile(arr, [20, 75])
         iqr = q3 - q1
         low, high = q1 - 1.5 * iqr, q3 + 1.5 * iqr
         return (arr >= low) & (arr <= high)
 
     def hex_bin(self, x, y, xlab, ylab, filename):
+        if len(x) == 0 or len(y) == 0:
+            return
+
         plt.figure(figsize=(14, 8))
 
         # Hex-bin density
         hb = plt.hexbin(
-            x, y,
-            gridsize=30,  # bigger → coarser; smaller → finer
+            x,
+            y,
+            gridsize=30,
             cmap="Reds",
-            mincnt=1  # only colour hexes that have ≥1 point
+            mincnt=1,
         )
 
-        # Optional colour bar to show counts
-        cb = plt.colorbar(hb)
-        # cb.set_label("Count per hex")
-
-        # (Optional) overlay the raw points for context
+        plt.colorbar(hb)
         plt.scatter(x, y, color="black", alpha=0.4, s=12)
 
-        # plt.xlim(1, 2)
         plt.xlabel(xlab)
         plt.ylabel(ylab)
-        plt.savefig(self.filepath.joinpath(filename + '.pdf'), format='pdf', bbox_inches='tight')
+        plt.savefig(
+            self.filepath.joinpath(filename + ".pdf"), format="pdf", bbox_inches="tight"
+        )
         plt.close()
 
     def heat_map(self, x, y, xlab, ylab, filename):
+        if len(x) == 0 or len(y) == 0:
+            return
+
         plt.figure(figsize=(14, 8))
-        sns.kdeplot(
-            x=x,
-            y=y,
-            fill=True,
-            cmap="Reds",
-            thresh=1,
-            levels=100
-        )
+        sns.kdeplot(x=x, y=y, fill=True, cmap="Reds", thresh=1, levels=100)
         plt.scatter(x, y, color="black", alpha=0.4)
         plt.xlim(1, 2)
         plt.xlabel(xlab)
         plt.ylabel(ylab)
         plt.grid(True)
-        plt.savefig(self.filepath.joinpath(filename + '.pdf'), format='pdf', bbox_inches='tight')
+        plt.savefig(
+            self.filepath.joinpath(filename + ".pdf"), format="pdf", bbox_inches="tight"
+        )
         plt.close()
 
     def scatter_plot(self, x, y, xlab, ylab, filename):
         x = np.asarray(x, dtype=float)
         y = np.asarray(y, dtype=float)
+
+        if len(x) == 0 or len(y) == 0:
+            return
+
         mask = self.__inlier_mask(x) & self.__inlier_mask(y)
         x, y = x[mask], y[mask]
+
+        if len(x) == 0:
+            return
 
         plt.figure(figsize=(6, 5))
         plt.scatter(x, y, s=60, alpha=1, color="#0043ce", edgecolor="black")
@@ -390,13 +483,11 @@ class ExtractStatisticsUtils:
             y_line = slope * x_line + intercept
             plt.plot(x_line, y_line, color="#da1e28", linewidth=2, label="Trend")
 
-            # Pearson correlation
-            r = np.corrcoef(x, y)[0, 1]
-
-        # plt.hist2d(x, y)
         plt.xlabel(xlab)
         plt.ylabel(ylab)
-        plt.savefig(self.filepath.joinpath(filename + '.pdf'), format='pdf', bbox_inches='tight')
+        plt.savefig(
+            self.filepath.joinpath(filename + ".pdf"), format="pdf", bbox_inches="tight"
+        )
         plt.close()
 
     @staticmethod
@@ -416,9 +507,11 @@ class ExtractStatisticsUtils:
         lo, hi = q1 - k * iqr, q3 + k * iqr
         return arr[(arr >= lo) & (arr <= hi)]
 
-    def get_box_plot(self, elements: list, labels: List[str], title: str, filename: str) -> None:
+    def get_box_plot(
+        self, elements: list, labels: List[str], title: str, filename: str
+    ) -> None:
         if not elements:
-            RichLog.error(f'No elements found to crea {title}')
+            RichLog.error(f"No elements found to crea {title}")
             return None
 
         fig, ax = plt.subplots(figsize=(3, 6))
@@ -432,7 +525,7 @@ class ExtractStatisticsUtils:
             cleaned,
             labels=[""],
             patch_artist=True,  # <-- lets us fill with colour
-            medianprops=dict(color="red", linewidth=1.5)
+            medianprops=dict(color="red", linewidth=1.5),
         )
 
         # Use either a Matplotlib colormap or your own hex colours
@@ -454,7 +547,9 @@ class ExtractStatisticsUtils:
         # ------------------------------------------------------------
         # ax.set_title(title)
         ax.grid(axis="y", linestyle="--", alpha=0.4)
-        plt.savefig(self.filepath.joinpath(filename + '.pdf'), format='pdf', bbox_inches='tight')
+        plt.savefig(
+            self.filepath.joinpath(filename + ".pdf"), format="pdf", bbox_inches="tight"
+        )
         plt.close()
 
 
@@ -481,14 +576,25 @@ class TopK:
         self.keep_largest = keep_largest
         self._heap: List[AnalysisMetric] = []  # Using a min-heap to store top k
 
-    def add(self, value: float | int, method_signature: str | None = None, qualified_class_name: str | None = None,
-            project_name: str | None = None) -> None:
+    def add(
+        self,
+        value: float | int,
+        method_signature: str | None = None,
+        qualified_class_name: str | None = None,
+        project_name: str | None = None,
+    ) -> None:
         sort_index = value if self.keep_largest else -value
         # If keep_largest, then min_heap[0] is smallest value in heap
         # If not keep_largest, then min_heap[0] is largest value (stored as large neg) in heap
 
-        analysis_metric = AnalysisMetric(sort_index, value, self.metric, method_signature, qualified_class_name,
-                                         project_name)
+        analysis_metric = AnalysisMetric(
+            sort_index,
+            value,
+            self.metric,
+            method_signature,
+            qualified_class_name,
+            project_name,
+        )
         if len(self._heap) < self.k:
             heapq.heappush(self._heap, analysis_metric)
         else:
@@ -501,12 +607,13 @@ class TopK:
         return sorted(
             self._heap,
             key=lambda analysis_metric: analysis_metric.value,
-            reverse=self.keep_largest
+            reverse=self.keep_largest,
         )
 
     def top_k_serialized(self) -> List[Dict[str, Any]]:
         """Returns top_k in sorted order.  Descending if largest, ascending if smallest."""
         sorted_analysis_metrics: List[AnalysisMetric] = self.top_k()
-        serialized_analysis_metrics: List[Dict[str, Any]] = [asdict(analysis_metric) for
-                                                             analysis_metric in sorted_analysis_metrics]
+        serialized_analysis_metrics: List[Dict[str, Any]] = [
+            asdict(analysis_metric) for analysis_metric in sorted_analysis_metrics
+        ]
         return serialized_analysis_metrics

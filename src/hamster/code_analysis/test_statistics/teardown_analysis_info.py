@@ -1,28 +1,28 @@
 import re
 from collections import defaultdict
-from typing import List, Dict, Set, Optional
+from typing import Dict, List, Optional, Set
 
 from cldk.analysis.java import JavaAnalysis
 from cldk.models.java import JCallable
 
-from .call_and_assertion_sequence_details_info import (
-    CallAndAssertionSequenceDetailsInfo,
-)
-
 from hamster.code_analysis.common import CommonAnalysis, Reachability
 from hamster.code_analysis.model.models import (
-    TestingFramework,
+    CallableDetails,
+    CallAndAssertionSequenceDetails,
+    CleanupDetails,
+    CleanupType,
     ExecutionOrder,
     TeardownAnalysis,
-    CallAndAssertionSequenceDetails,
-    CleanupType,
-    CleanupDetails,
-    CallableDetails,
+    TestingFramework,
 )
 from hamster.code_analysis.utils.constants import (
-    CLEANUP_NAME_PATTERNS,
-    CLEANUP_CATEGORY_TO_RECEIVER_SUBSTRING,
     CLEANUP_CATEGORY_TO_PREFIXES,
+    CLEANUP_CATEGORY_TO_RECEIVER_SUBSTRING,
+    CLEANUP_NAME_PATTERNS,
+)
+
+from .call_and_assertion_sequence_details_info import (
+    CallAndAssertionSequenceDetailsInfo,
 )
 
 _RECEIVER_SUBSTRING_TO_CLEANUP_TYPE: Dict[str, Set[CleanupType]] = defaultdict(set)
@@ -86,6 +86,9 @@ class TeardownAnalysisInfo:
 
         Returns:
             Dict[str, List[str]]: Mapping of declaring class names to teardown method signatures.
+
+        Raises:
+            ClassNotFoundException: If the class cannot be found.
         """
         reachable_methods = Reachability(self.analysis).get_visible_class_methods(
             qualified_class_name,
@@ -163,6 +166,7 @@ class TeardownAnalysisInfo:
         qualified_class_name: str,
         method_signature: str,
         testing_frameworks: List[TestingFramework],
+        test_utility_classes: List[str] | None = None,
     ) -> TeardownAnalysis:
         """
         Retrieves analysis of a teardown method, including metrics from the method and its helper methods.
@@ -206,14 +210,15 @@ class TeardownAnalysisInfo:
         )
 
         # Retrieve call and assertion sequence information
-        call_assertion_sequences: List[
-            CallAndAssertionSequenceDetails
-        ] = CallAndAssertionSequenceDetailsInfo(
-            self.analysis
-        ).get_call_and_assertion_sequence_details_info(
-            qualified_class_name=qualified_class_name,
-            method_signature=method_signature,
-            testing_frameworks=testing_frameworks,
+        call_assertion_sequences: List[CallAndAssertionSequenceDetails] = (
+            CallAndAssertionSequenceDetailsInfo(
+                self.analysis
+            ).get_call_and_assertion_sequence_details_info(
+                qualified_class_name=qualified_class_name,
+                method_signature=method_signature,
+                testing_frameworks=testing_frameworks,
+                test_utility_classes=test_utility_classes,
+            )
         )
         number_of_assertions = self.__get_number_of_assertions(call_assertion_sequences)
 
@@ -238,6 +243,7 @@ class TeardownAnalysisInfo:
             method_signature=method_signature,
             add_extended_class=True,
             allow_repetition=True,
+            test_utility_classes=test_utility_classes or [],
         )
 
         all_methods = helper_methods

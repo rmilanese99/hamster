@@ -55,6 +55,8 @@ class OverallCharacteristics:
         android_projects = []
         class_details = {}
         total_projects = 0
+        total_test_utility_class = []
+        total_test_utility_method = []
         test_types = []
         focal_classes = []
         focal_methods = []
@@ -72,9 +74,6 @@ class OverallCharacteristics:
             for project_analysis in p.track(self.all_project_analyses, total=len(self.all_project_analyses)):
                 frameworks_in_project = []
                 total_projects += 1
-                tests_per_project = 0
-                test_class_count = 0
-                test_method_count = 0
                 total_fixtures = 0
 
                 for a_type in project_analysis.application_types:
@@ -83,8 +82,6 @@ class OverallCharacteristics:
                     else:
                         app_types[a_type.value] += 1
                 for test_class in project_analysis.test_class_analyses:
-                    total_test_class += 1
-                    test_class_count += 1
                     for test_framework_in_class in test_class.testing_frameworks:
                         framework_group = self.map_testing_framework_group(test_framework_in_class.value)
                         # if framework_group != '':
@@ -146,12 +143,10 @@ class OverallCharacteristics:
 
                     total_fixtures += class_fixture_count
                     total_tests += len(test_class.test_method_analyses)
-                    test_method_count += len(test_class.test_method_analyses)
                     top_num_tests_methods_in_class.add(len(test_class.test_method_analyses),
                                                        qualified_class_name=test_class.qualified_class_name,
                                                        project_name=project_analysis.dataset_name)
 
-                    tests_per_project += len(test_class.test_method_analyses)
                     frameworks_in_project.extend(
                         [test_framework.value for test_framework in test_class.testing_frameworks])
                     testing_frameworks.extend(
@@ -194,6 +189,7 @@ class OverallCharacteristics:
                                 if len(focal_class.focal_method_names) > 1:
                                     focal_methods.append(len(focal_class.focal_method_names))
                 fixtures_per_project.append(total_fixtures)
+                total_test_class += project_analysis.test_class_count
                 if AppType.ANDROID in project_analysis.application_types:
                     android_projects.append(project_analysis.dataset_name)
                 if len(project_analysis.test_class_analyses) > 0:
@@ -202,14 +198,16 @@ class OverallCharacteristics:
                     total_application_class.append(project_analysis.application_class_count)
                     total_application_method.append(project_analysis.application_method_count)
                     total_cc.append(project_analysis.application_cyclomatic_complexity)
-                    total_test_methods.append(test_method_count)
+                    total_test_methods.append(project_analysis.test_method_count)
+                    total_test_utility_class.append(project_analysis.test_utility_class_count)
+                    total_test_utility_method.append(project_analysis.test_utility_method_count)
                     class_details[project_analysis.dataset_name] = {
                         "class_count": project_analysis.application_class_count,
                         "method_count": project_analysis.application_method_count,
                         "cyclomatic_complexity": project_analysis.application_cyclomatic_complexity,
-                        "test_count": test_method_count}
-                    tests_per_projects.append(tests_per_project)
-                    test_class_per_project.append(test_class_count)
+                        "test_count": project_analysis.test_method_count}
+                    tests_per_projects.append(project_analysis.test_method_count)
+                    test_class_per_project.append(project_analysis.test_class_count)
                     testing_frameworks_per_project[project_analysis.dataset_name] = frameworks_in_project
 
         avg_tests_per_project = np.mean(tests_per_projects)
@@ -310,6 +308,15 @@ class OverallCharacteristics:
             "avg_application_method": np.mean(total_application_method),
             "application_method_distribution": self.extract_statistics_utils.get_summary_stats(
                 total_application_method),
+
+            "total_test_utility_class": sum(total_test_utility_class),
+            "avg_test_utility_class": np.mean(total_test_utility_class) if total_test_utility_class else 0,
+            "test_utility_class_distribution": self.extract_statistics_utils.get_summary_stats(
+                total_test_utility_class),
+            "total_test_utility_method": sum(total_test_utility_method),
+            "avg_test_utility_method": np.mean(total_test_utility_method) if total_test_utility_method else 0,
+            "test_utility_method_distribution": self.extract_statistics_utils.get_summary_stats(
+                total_test_utility_method),
 
             "total_test_class": total_test_class,
             "avg_test_class_per_project": np.mean(test_class_per_project),

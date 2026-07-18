@@ -2,7 +2,6 @@ import time
 from pathlib import Path
 
 import pytest
-
 from cldk import CLDK
 from cldk.analysis import AnalysisLevel
 
@@ -15,7 +14,7 @@ from hamster.code_analysis.test_statistics import (
 
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_PATH_RELATIVE = "resources/spring-petclinic"
-ANALYSIS_JSON_PATH_RELATIVE = "resources/output/spring-petclinic"
+ANALYSIS_JSON_PATH_RELATIVE = "output/spring-petclinic"
 PROJECT_PATH = str(BASE_DIR / PROJECT_PATH_RELATIVE)
 ANALYSIS_JSON_PATH = str(BASE_DIR / ANALYSIS_JSON_PATH_RELATIVE)
 DATASET_NAME = "spring-petclinic"
@@ -38,7 +37,7 @@ def common_analysis(analysis):
 
 @pytest.fixture(scope="module")
 def test_class_data(common_analysis):
-    return common_analysis.get_test_methods_classes_and_application_classes()
+    return common_analysis.categorize_classes()
 
 
 @pytest.fixture(scope="module")

@@ -1,13 +1,13 @@
-from typing import List, Dict, Tuple
+from typing import List
 
 from cldk.analysis.java import JavaAnalysis
 
-from .test_class_analysis_info import TestClassAnalysisInfo
-
 from hamster.code_analysis.common import CommonAnalysis
-from hamster.code_analysis.model.models import ProjectAnalysis, AppType, TestingFramework
+from hamster.code_analysis.model.models import AppType, ProjectAnalysis
 from hamster.code_analysis.utils import constants
 from hamster.utils.pretty.progress_bar import ProgressBarFactory
+
+from .test_class_analysis_info import TestClassAnalysisInfo
 
 
 class ProjectAnalysisInfo:
@@ -24,32 +24,53 @@ class ProjectAnalysisInfo:
         dataset_name = self.dataset_name
         application_types = self.__get_application_types()
         test_class_analyses = []
-        test_class_methods, application_classes = CommonAnalysis(
-            self.analysis).get_test_methods_classes_and_application_classes()
+        test_class_methods, application_classes, test_utility_classes = CommonAnalysis(
+            self.analysis
+        ).categorize_classes()
 
         test_class_analysis_obj = TestClassAnalysisInfo(
             analysis=self.analysis,
             dataset_name=self.dataset_name,
             application_classes=application_classes,
+            test_utility_classes=test_utility_classes,
         )
 
-        print(f"Processing {self.dataset_name} with {len(test_class_methods)} test classes...")
-        with (ProgressBarFactory.get_progress_bar() as p):
-            for test_class in p.track(test_class_methods, total=len(test_class_methods)):
-                test_class_analyses.append(test_class_analysis_obj.get_test_class_analysis(
-                    qualified_class_name=test_class,
-                    test_methods=test_class_methods[test_class],
-                ))
+        print(
+            f"Processing {self.dataset_name} with {len(test_class_methods)} test classes..."
+        )
+        with ProgressBarFactory.get_progress_bar() as p:
+            for test_class in p.track(
+                test_class_methods, total=len(test_class_methods)
+            ):
+                test_class_analyses.append(
+                    test_class_analysis_obj.get_test_class_analysis(
+                        qualified_class_name=test_class,
+                        test_methods=test_class_methods[test_class],
+                    )
+                )
 
-        application_method_count, application_cyclomatic_complexity = self.__get_application_method_details(
-            classes=application_classes)
+        application_method_count, application_cyclomatic_complexity = (
+            self.__get_application_method_details(classes=application_classes)
+        )
 
-        return ProjectAnalysis(dataset_name=dataset_name,
-                               application_class_count=len(application_classes),
-                               application_method_count=application_method_count,
-                               application_cyclomatic_complexity=application_cyclomatic_complexity,
-                               application_types=application_types,
-                               test_class_analyses=test_class_analyses)
+        test_class_count = len(test_class_methods)
+        test_method_count = sum(len(methods) for methods in test_class_methods.values())
+        test_utility_method_count = self.__get_test_utility_method_count(
+            test_utility_classes
+        )
+
+        return ProjectAnalysis(
+            dataset_name=dataset_name,
+            application_class_count=len(application_classes),
+            application_method_count=application_method_count,
+            application_cyclomatic_complexity=application_cyclomatic_complexity,
+            application_types=application_types,
+            test_class_count=test_class_count,
+            test_method_count=test_method_count,
+            test_utility_class_count=len(test_utility_classes),
+            test_utility_method_count=test_utility_method_count,
+            test_class_analyses=test_class_analyses,
+        )
 
     def __get_application_method_details(self, classes: List[str]):
         """
@@ -66,13 +87,33 @@ class ProjectAnalysisInfo:
             methods = self.analysis.get_methods_in_class(class_name)
             application_method_count += len(methods)
             for method in methods:
-                application_cyclomatic_complexity += methods[method].cyclomatic_complexity
+                if methods[method].cyclomatic_complexity:
+                    application_cyclomatic_complexity += methods[
+                        method
+                    ].cyclomatic_complexity
         return application_method_count, application_cyclomatic_complexity
+
+    def __get_test_utility_method_count(self, test_utility_classes: List[str]) -> int:
+        """
+        Get the total number of methods in test utility classes.
+        Args:
+            test_utility_classes: list of test utility class names
+
+        Returns:
+            int: total method count across all test utility classes
+        """
+        test_utility_method_count = 0
+        for class_name in test_utility_classes:
+            methods = self.analysis.get_methods_in_class(class_name)
+            test_utility_method_count += len(methods)
+        return test_utility_method_count
 
     def __get_application_types(self) -> List[AppType]:
         app_type = []
         imports = []
-        non_app_imports_dict = CommonAnalysis(self.analysis).get_imports(is_add_application_class=False)
+        non_app_imports_dict = CommonAnalysis(self.analysis).get_imports(
+            is_add_application_class=False
+        )
         non_app_imports = list(non_app_imports_dict.keys())
         for non_app_import in non_app_imports:
             imports.extend(non_app_import)

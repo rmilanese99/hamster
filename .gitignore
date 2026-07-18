@@ -3,6 +3,7 @@
 
 # Lock file
 *.lock
+!uv.lock
 
 # Output file
 */output
@@ -63,6 +64,8 @@ resources/*
 tests/scratchpad
 tests/resources/*
 !tests/resources/spring-petclinic/
+!tests/resources/commons-cli/
+!tests/resources/commons-bsf/
 
 # Python compiled files and env
 __pycache__/
@@ -85,10 +88,26 @@ output/*
 
 #result folder
 hamster_analysis
+
 # temp files
 temp
+
+# experimenting folder
+experimenting/
+
+# Planning files
+plans/
 
 # Test files
 **/test.py
 
+# .md logging
+*.md
+
 vscode_plugin/
+
+# Agents
+.codex/
+.claude/
+AGENTS.md
+CLAUDE.md

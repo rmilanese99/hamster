@@ -1,11 +1,10 @@
 import cProfile
 import io
+import pstats
 import time
 from pathlib import Path
 
 import pytest
-import pstats
-
 from cldk import CLDK
 from cldk.analysis import AnalysisLevel
 
@@ -13,7 +12,7 @@ from hamster.code_analysis.common import CommonAnalysis, Reachability
 
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_PATH_RELATIVE = "resources/spring-petclinic"
-ANALYSIS_JSON_PATH_RELATIVE = "resources/output/spring-petclinic"
+ANALYSIS_JSON_PATH_RELATIVE = "output/spring-petclinic"
 PROJECT_PATH = str(BASE_DIR / PROJECT_PATH_RELATIVE)
 ANALYSIS_JSON_PATH = str(BASE_DIR / ANALYSIS_JSON_PATH_RELATIVE)
 DATASET_NAME = "spring-petclinic"
@@ -31,7 +30,7 @@ def analysis():
 
 @pytest.fixture(scope="module")
 def test_class_data(analysis):
-    return CommonAnalysis(analysis).get_test_methods_classes_and_application_classes()
+    return CommonAnalysis(analysis).categorize_classes()
 
 
 @pytest.fixture(scope="module")
@@ -42,7 +41,9 @@ def test_class_methods(test_class_data):
 @pytest.fixture(scope="module")
 def interfaces(analysis):
     all_classes = analysis.get_classes()
-    return [cls_name for cls_name, details in all_classes.items() if details.is_interface]
+    return [
+        cls_name for cls_name, details in all_classes.items() if details.is_interface
+    ]
 
 
 @pytest.fixture
@@ -62,15 +63,21 @@ def profiled_time_tracker(request):
     print(stream.getvalue())
 
 
-def test_all_get_helper_methods_default(profiled_time_tracker, analysis, test_class_methods):
+def test_all_get_helper_methods_default(
+    profiled_time_tracker, analysis, test_class_methods
+):
     reachability = Reachability(analysis)
     for qualified_class_name, methods in test_class_methods.items():
         for method_signature in methods:
-            helpers = reachability.get_helper_methods(qualified_class_name, method_signature)
+            helpers = reachability.get_helper_methods(
+                qualified_class_name, method_signature
+            )
             assert isinstance(helpers, dict)
 
 
-def test_all_get_helper_methods_add_extended(profiled_time_tracker, analysis, test_class_methods):
+def test_all_get_helper_methods_add_extended(
+    profiled_time_tracker, analysis, test_class_methods
+):
     reachability = Reachability(analysis)
     for qualified_class_name, methods in test_class_methods.items():
         for method_signature in methods:
@@ -82,7 +89,9 @@ def test_all_get_helper_methods_add_extended(profiled_time_tracker, analysis, te
             assert isinstance(helpers, dict)
 
 
-def test_all_get_helper_methods_allow_repetition(profiled_time_tracker, analysis, test_class_methods):
+def test_all_get_helper_methods_allow_repetition(
+    profiled_time_tracker, analysis, test_class_methods
+):
     reachability = Reachability(analysis)
     for qualified_class_name, methods in test_class_methods.items():
         for method_signature in methods:
@@ -94,7 +103,9 @@ def test_all_get_helper_methods_allow_repetition(profiled_time_tracker, analysis
             assert isinstance(helpers, dict)
 
 
-def test_all_get_helper_methods_both(profiled_time_tracker, analysis, test_class_methods):
+def test_all_get_helper_methods_both(
+    profiled_time_tracker, analysis, test_class_methods
+):
     reachability = Reachability(analysis)
     for qualified_class_name, methods in test_class_methods.items():
         for method_signature in methods:
@@ -107,7 +118,9 @@ def test_all_get_helper_methods_both(profiled_time_tracker, analysis, test_class
             assert isinstance(helpers, dict)
 
 
-def test_all_get_helper_methods_depth_1(profiled_time_tracker, analysis, test_class_methods):
+def test_all_get_helper_methods_depth_1(
+    profiled_time_tracker, analysis, test_class_methods
+):
     reachability = Reachability(analysis)
     for qualified_class_name, methods in test_class_methods.items():
         for method_signature in methods:
@@ -121,7 +134,9 @@ def test_all_get_helper_methods_depth_1(profiled_time_tracker, analysis, test_cl
             assert isinstance(helpers, dict)
 
 
-def test_all_get_helper_methods_depth_2(profiled_time_tracker, analysis, test_class_methods):
+def test_all_get_helper_methods_depth_2(
+    profiled_time_tracker, analysis, test_class_methods
+):
     reachability = Reachability(analysis)
     for qualified_class_name, methods in test_class_methods.items():
         for method_signature in methods:
@@ -135,7 +150,9 @@ def test_all_get_helper_methods_depth_2(profiled_time_tracker, analysis, test_cl
             assert isinstance(helpers, dict)
 
 
-def test_all_get_helper_methods_depth_3(profiled_time_tracker, analysis, test_class_methods):
+def test_all_get_helper_methods_depth_3(
+    profiled_time_tracker, analysis, test_class_methods
+):
     reachability = Reachability(analysis)
     for qualified_class_name, methods in test_class_methods.items():
         for method_signature in methods:

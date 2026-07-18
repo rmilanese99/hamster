@@ -1,29 +1,45 @@
-from typing import List, Dict, Tuple
+from typing import Dict, List, Tuple
 
 from cldk.analysis.java import JavaAnalysis
 from cldk.models.java import JCallable
 
-from .input_analysis import InputAnalysis
-from .setup_analysis_info import SetupAnalysisInfo
-from .call_and_assertion_sequence_details_info import CallAndAssertionSequenceDetailsInfo
-
 from hamster.code_analysis.common import CommonAnalysis, Reachability
 from hamster.code_analysis.focal_class_method.focal_class_method import FocalClassMethod
-from hamster.code_analysis.model.models import TestingFramework, TestMethodAnalysis, TestType, FocalClass
-from hamster.code_analysis.utils.constants import BDD_TEST_FRAMEWORKS, BDD_ANNOTATIONS
+from hamster.code_analysis.model.models import (
+    FocalClassInfo,
+    TestingFramework,
+    TestMethodAnalysis,
+    TestType,
+)
+from hamster.code_analysis.utils.constants import BDD_ANNOTATIONS, BDD_TEST_FRAMEWORKS
+
+from .call_and_assertion_sequence_details_info import (
+    CallAndAssertionSequenceDetailsInfo,
+)
+from .input_analysis import InputAnalysis
+from .setup_analysis_info import SetupAnalysisInfo
 
 
 class TestMethodAnalysisInfo:
-    def __init__(self, analysis: JavaAnalysis, dataset_name: str, application_classes: List[str], ):
+    def __init__(
+        self,
+        analysis: JavaAnalysis,
+        dataset_name: str,
+        application_classes: List[str],
+        test_utility_classes: List[str] | None = None,
+    ):
         self.analysis = analysis
         self.dataset_name = dataset_name
         self.application_classes = application_classes
+        self.test_utility_classes = test_utility_classes or []
 
-    def get_test_method_analysis_info(self,
-                                      testing_frameworks: List[TestingFramework],
-                                      qualified_class_name: str,
-                                      method_signature: str,
-                                      setup_methods: Dict[str, List[str]]) -> TestMethodAnalysis:
+    def get_test_method_analysis_info(
+        self,
+        testing_frameworks: List[TestingFramework],
+        qualified_class_name: str,
+        method_signature: str,
+        setup_methods: Dict[str, List[str]],
+    ) -> TestMethodAnalysis:
         """
         Analyzes a test method and its helpers to gather detailed test analysis information.
 
@@ -37,7 +53,9 @@ class TestMethodAnalysisInfo:
             TestMethodAnalysis: An object containing comprehensive analysis of the test method.
         """
         # Retrieve method details or return a default analysis if not found
-        method_details = self.analysis.get_method(qualified_class_name, method_signature)
+        method_details = self.analysis.get_method(
+            qualified_class_name, method_signature
+        )
         if not method_details:
             return TestMethodAnalysis(
                 qualified_class_name=qualified_class_name,
@@ -49,10 +67,12 @@ class TestMethodAnalysisInfo:
 
         # Check if the test uses BDD style based on frameworks and annotations
         is_bdd = False
-        if any(testing_framework in BDD_TEST_FRAMEWORKS
-               for testing_framework in testing_frameworks):
+        if any(
+            testing_framework in BDD_TEST_FRAMEWORKS
+            for testing_framework in testing_frameworks
+        ):
             for annotation in method_details.annotations:
-                if annotation.split('(')[0] in BDD_ANNOTATIONS:
+                if annotation.split("(")[0] in BDD_ANNOTATIONS:
                     is_bdd = True
 
         # Extract basic method information
@@ -74,13 +94,18 @@ class TestMethodAnalysisInfo:
         ncloc: int = common_analysis.get_ncloc(method_declaration, method_details.code)
         ncloc_with_helpers: int = 0
 
-        cyclomatic_complexity: int = method_details.cyclomatic_complexity if method_details.cyclomatic_complexity else 0
+        cyclomatic_complexity: int = (
+            method_details.cyclomatic_complexity
+            if method_details.cyclomatic_complexity
+            else 0
+        )
         cyclomatic_complexity_with_helpers: int = 0
 
         # Gather input details for the test method
         test_inputs = InputAnalysis(self.analysis).get_input_details(
             qualified_class_name,
             method_signature,
+            test_utility_classes=self.test_utility_classes,
         )
 
         # Initialize variables for aggregated metrics across method and helpers
@@ -91,11 +116,14 @@ class TestMethodAnalysisInfo:
         library_call_details = []
 
         # Get all reachable helper methods including those from extended classes
-        helper_methods: Dict[str, List[str]] = Reachability(self.analysis).get_helper_methods(
+        helper_methods: Dict[str, List[str]] = Reachability(
+            self.analysis
+        ).get_helper_methods(
             qualified_class_name,
             method_signature,
             add_extended_class=True,
-            allow_repetition=True
+            allow_repetition=True,
+            test_utility_classes=self.test_utility_classes,
         )
 
         # Include the original method in the set of methods to analyze
@@ -109,13 +137,28 @@ class TestMethodAnalysisInfo:
                 if not method:
                     continue
 
-                is_mocking_used = self.__is_mocking_used(class_name, method.signature) or is_mocking_used
-                number_of_objects_created += self.__get_number_of_objects_created(method)
-                cyclomatic_complexity_with_helpers += method.cyclomatic_complexity if method.cyclomatic_complexity else 0
-                ncloc_with_helpers += common_analysis.get_ncloc(method.declaration, method.code)
-                constructor_call_details.extend(common_analysis.get_constructor_call_details(method))
-                application_call_details.extend(common_analysis.get_application_call_details(method))
-                library_call_details.extend(common_analysis.get_library_call_details(method))
+                is_mocking_used = (
+                    self.__is_mocking_used(class_name, method.signature)
+                    or is_mocking_used
+                )
+                number_of_objects_created += self.__get_number_of_objects_created(
+                    method
+                )
+                cyclomatic_complexity_with_helpers += (
+                    method.cyclomatic_complexity if method.cyclomatic_complexity else 0
+                )
+                ncloc_with_helpers += common_analysis.get_ncloc(
+                    method.declaration, method.code
+                )
+                constructor_call_details.extend(
+                    common_analysis.get_constructor_call_details(method)
+                )
+                application_call_details.extend(
+                    common_analysis.get_application_call_details(method)
+                )
+                library_call_details.extend(
+                    common_analysis.get_library_call_details(method)
+                )
 
         # Initialize mocking-related variables
         number_of_mocks_created = 0
@@ -130,11 +173,14 @@ class TestMethodAnalysisInfo:
                         continue
 
                     # Use SetupAnalysisInfo to gather mocking details (applies to test methods too)
-                    mocked_details = SetupAnalysisInfo(self.analysis).get_setup_method_details(
+                    mocked_details = SetupAnalysisInfo(
+                        self.analysis
+                    ).get_setup_method_details(
                         qualified_class_name=class_name,
                         method_signature=method.signature,
                         testing_frameworks=testing_frameworks,
-                        is_test_method=True
+                        is_test_method=True,
+                        test_utility_classes=self.test_utility_classes,
                     )
                     number_of_mocks_created += mocked_details.number_of_mocks_created
                     if mocking_frameworks_used is None:
@@ -144,45 +190,47 @@ class TestMethodAnalysisInfo:
                         mocked_resources.extend(method_mocked_resources)
 
         # Retrieve call and assertion sequence details
-        call_assertion_sequences = (
-            CallAndAssertionSequenceDetailsInfo(self.analysis,
-                                                self.dataset_name).get_call_and_assertion_sequence_details_info(
-                qualified_class_name=qualified_class_name,
-                method_signature=method_signature,
-                testing_frameworks=testing_frameworks
-            )
+        call_assertion_sequences = CallAndAssertionSequenceDetailsInfo(
+            self.analysis, self.dataset_name
+        ).get_call_and_assertion_sequence_details_info(
+            qualified_class_name=qualified_class_name,
+            method_signature=method_signature,
+            testing_frameworks=testing_frameworks,
+            test_utility_classes=self.test_utility_classes,
         )
 
         # Construct and return the analysis object
-        return TestMethodAnalysis(qualified_class_name=qualified_class_name,
-                                  method_signature=method_signature,
-                                  method_declaration=method_declaration,
-                                  annotations=annotations,
-                                  thrown_exceptions=thrown_exceptions,
-                                  test_type=test_type,
-                                  ncloc=ncloc,
-                                  ncloc_with_helpers=ncloc_with_helpers,
-                                  cyclomatic_complexity=cyclomatic_complexity,
-                                  cyclomatic_complexity_with_helpers=cyclomatic_complexity_with_helpers,
-                                  test_inputs=test_inputs,
-                                  is_mocking_used=is_mocking_used,
-                                  number_of_mocks_created=number_of_mocks_created,
-                                  mocking_frameworks_used=mocking_frameworks_used,
-                                  mocked_resources=mocked_resources,
-                                  number_of_objects_created=number_of_objects_created,
-                                  constructor_call_details=constructor_call_details,
-                                  application_call_details=application_call_details,
-                                  library_call_details=library_call_details,
-                                  call_assertion_sequences=call_assertion_sequences,
-                                  focal_classes=focal_classes,
-                                  is_bdd=is_bdd)
+        return TestMethodAnalysis(
+            qualified_class_name=qualified_class_name,
+            method_signature=method_signature,
+            method_declaration=method_declaration,
+            annotations=annotations,
+            thrown_exceptions=thrown_exceptions,
+            test_type=test_type,
+            ncloc=ncloc,
+            ncloc_with_helpers=ncloc_with_helpers,
+            cyclomatic_complexity=cyclomatic_complexity,
+            cyclomatic_complexity_with_helpers=cyclomatic_complexity_with_helpers,
+            test_inputs=test_inputs,
+            is_mocking_used=is_mocking_used,
+            number_of_mocks_created=number_of_mocks_created,
+            mocking_frameworks_used=mocking_frameworks_used,
+            mocked_resources=mocked_resources,
+            number_of_objects_created=number_of_objects_created,
+            constructor_call_details=constructor_call_details,
+            application_call_details=application_call_details,
+            library_call_details=library_call_details,
+            call_assertion_sequences=call_assertion_sequences,
+            focal_classes=focal_classes,
+            is_bdd=is_bdd,
+        )
 
     def get_test_type_focal_classes(
         self,
         test_class_qualified_name: str,
         test_method_signature: str,
         setup_methods: Dict[str, List[str]],
-    ) -> Tuple[TestType, List[FocalClass]]:
+    ) -> Tuple[TestType, List[FocalClassInfo]]:
         """
         Determines the test type and identifies focal classes for a given test method.
 
@@ -192,18 +240,20 @@ class TestMethodAnalysisInfo:
             setup_methods: Mapping of qualified class name to setup method signatures.
 
         Returns:
-            Tuple[TestType, List[FocalClass]]: The determined test type and list of focal classes.
+            Tuple[TestType, List[FocalClassInfo]]: The determined test type and list of focal classes.
         """
         # Identify focal classes and flags for UI/API test detection
-        focal_classes, is_application_classed_used, is_ui_test, is_api_test = \
-            (
-                FocalClassMethod(
-                    analysis=self.analysis,
-                    application_classes=self.application_classes,
-                )
-             .identify_focal_class_and_ui_api_test(test_class_name=test_class_qualified_name,
-                                                  test_method_signature=test_method_signature,
-                                                  setup_methods=setup_methods))
+        focal_classes, is_application_classed_used, is_ui_test, is_api_test = (
+            FocalClassMethod(
+                analysis=self.analysis,
+                application_classes=self.application_classes,
+                test_utility_classes=self.test_utility_classes,
+            ).extract_test_scope(
+                test_qualified_class_name=test_class_qualified_name,
+                test_method_signature=test_method_signature,
+                setup_methods=setup_methods,
+            )
+        )
 
         # Classify test type based on flags and focal class count
         if is_ui_test:
@@ -216,15 +266,24 @@ class TestMethodAnalysisInfo:
             return TestType.UNIT_MODULE, focal_classes
         if num_focal_classes > 1:
             return TestType.INTEGRATION, focal_classes
-        if not is_application_classed_used:
-            return TestType.LIBRARY, focal_classes
 
-        return TestType.UNKNOWN, focal_classes
+        # For smoke and constructor tests
+        if is_application_classed_used:
+            return TestType.UNIT_MODULE, focal_classes
 
-    def __is_mocking_used(self,
-                          test_class_qualified_name: str,
-                          method_signature: str) -> bool:
-        return CommonAnalysis(self.analysis).is_mocking_used(test_class_qualified_name, method_signature) > 0
+        # Only library code used
+        return TestType.LIBRARY, focal_classes
+
+    def __is_mocking_used(
+        self, test_class_qualified_name: str, method_signature: str
+    ) -> bool:
+        """Raises exception is test class and/or method does not exist."""
+        return (
+            CommonAnalysis(self.analysis).is_mocking_used(
+                test_class_qualified_name, method_signature
+            )
+            > 0
+        )
 
     def __get_number_of_objects_created(self, method_details: JCallable) -> int:
         """
@@ -236,4 +295,6 @@ class TestMethodAnalysisInfo:
         Returns:
             int: The count of constructor calls (objects created).
         """
-        return len(CommonAnalysis(self.analysis).get_constructor_call_details(method_details))
+        return len(
+            CommonAnalysis(self.analysis).get_constructor_call_details(method_details)
+        )

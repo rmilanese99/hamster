@@ -1,15 +1,29 @@
 import re
 from pathlib import Path
-from typing import Dict, Set, List
+from typing import Dict, List, Set
 
-from hamster.code_analysis.model.models import TestingFramework, AssertionType, ParameterType, CleanupType, InputType, \
-    TestType
+from hamster.code_analysis.model.models import (
+    AssertionType,
+    CleanupType,
+    InputType,
+    ParameterType,
+    TestingFramework,
+    TestType,
+)
 
 CONTEXT_SEARCH_DEPTH = 100
-ANALYSIS_FOLDER = Path('hamster_analysis')
+ANALYSIS_FOLDER = Path("hamster_analysis")
+
+# Standard test source directories. Extend this list for other build systems (e.g., Gradle, Bazel).
+TEST_DIRS = ["src/test/java"]
 WEB_APPLICATION = ["javax.servlet"]
 WEB_API = ["org.springframework", "javax.ws"]
-WEB_FRAMEWORKK = ["org.springframework", "org.apache.struts", "io.quarkus.", "io.micronaut."]
+WEB_FRAMEWORKK = [
+    "org.springframework",
+    "org.apache.struts",
+    "io.quarkus.",
+    "io.micronaut.",
+]
 COMPONENT_BASED_UI = ["com.vaadin."]
 JAVA_EE = ["javax.", "jakarta."]
 ANDROID = ["android.", "androidx."]
@@ -17,136 +31,183 @@ ANDROID = ["android.", "androidx."]
 ASSERTIONS_CATEGORY_MAP: Dict[AssertionType, Dict[TestingFramework, Set[str]]] = {
     AssertionType.TRUTHINESS: {
         TestingFramework.JUNIT5: {
-            "assertTrue", "assertFalse",
+            "assertTrue",
+            "assertFalse",
         },
         TestingFramework.JUNIT4: {
-            "assertTrue", "assertFalse",
+            "assertTrue",
+            "assertFalse",
         },
         TestingFramework.JUNIT3: {
-            "assertTrue", "assertFalse",
+            "assertTrue",
+            "assertFalse",
         },
         TestingFramework.TESTNG: {
-            "assertTrue", "assertFalse",
+            "assertTrue",
+            "assertFalse",
         },
         TestingFramework.ASSERTJ: {
-            "isTrue", "isFalse",
+            "isTrue",
+            "isFalse",
         },
         TestingFramework.GOOGLE_TRUTH: {
-            "isTrue", "isFalse",
+            "isTrue",
+            "isFalse",
         },
-        TestingFramework.HAMCREST: {
-            "is", "not", "anything"
-        },
-        TestingFramework.JAVA_BUILTIN: {
-            "assert"
-        }
+        TestingFramework.HAMCREST: {"is", "not", "anything"},
+        TestingFramework.JAVA_BUILTIN: {"assert"},
     },
     AssertionType.EQUALITY: {
         TestingFramework.JUNIT5: {
-            "assertEquals", "assertNotEquals",
+            "assertEquals",
+            "assertNotEquals",
         },
         TestingFramework.JUNIT4: {
-            "assertEquals", "assertNotEquals",
+            "assertEquals",
+            "assertNotEquals",
         },
         TestingFramework.JUNIT3: {
             "assertEquals",
         },
         TestingFramework.TESTNG: {
-            "assertEquals", "assertNotEquals",
+            "assertEquals",
+            "assertNotEquals",
         },
         TestingFramework.ASSERTJ: {
-            "isEqualTo", "isNotEqualTo", "isEqualByComparingTo", "isNotEqualByComparingTo",
+            "isEqualTo",
+            "isNotEqualTo",
+            "isEqualByComparingTo",
+            "isNotEqualByComparingTo",
             "usingOverriddenEquals",
-            "isEqualToIgnoringGivenFields", "isEqualToComparingOnlyGivenFields", "isEqualToIgnoringNullFields",
+            "isEqualToIgnoringGivenFields",
+            "isEqualToComparingOnlyGivenFields",
+            "isEqualToIgnoringNullFields",
             # Conflicting with PROPERTY
-            "isEqualToIgnoringCase", "isEqualToNormalizingWhitespace",  # Conflicts with STRING
+            "isEqualToIgnoringCase",
+            "isEqualToNormalizingWhitespace",  # Conflicts with STRING
         },
         TestingFramework.GOOGLE_TRUTH: {
-            "isEqualTo", "isNotEqualTo",
+            "isEqualTo",
+            "isNotEqualTo",
         },
         TestingFramework.HAMCREST: {
             "equalTo",  # Conflicts with STRING & COLLECTION
-            "equalToIgnoringCase", "equalToIgnoringWhiteSpace",  # Conflicts with STRING
+            "equalToIgnoringCase",
+            "equalToIgnoringWhiteSpace",  # Conflicts with STRING
             "comparesEqualTo",
         },
     },
     AssertionType.IDENTITY: {
         TestingFramework.JUNIT5: {
-            "assertSame", "assertNotSame", "assertInstanceOf", "assertNotInstanceOf",
+            "assertSame",
+            "assertNotSame",
+            "assertInstanceOf",
+            "assertNotInstanceOf",
         },
         TestingFramework.JUNIT4: {
-            "assertSame", "assertNotSame",
+            "assertSame",
+            "assertNotSame",
         },
         TestingFramework.JUNIT3: {
-            "assertSame", "assertNotSame",
+            "assertSame",
+            "assertNotSame",
         },
         TestingFramework.TESTNG: {
-            "assertSame", "assertNotSame",
+            "assertSame",
+            "assertNotSame",
         },
         TestingFramework.ASSERTJ: {
-            "isSameAs", "isNotSameAs", "isInstanceOf", "isExactlyInstanceOf", "isInstanceOfAny", "isOfAnyClassIn",
-            "withStrictTypeChecking", "withEqualsForType", "isNotInstanceOf",
+            "isSameAs",
+            "isNotSameAs",
+            "isInstanceOf",
+            "isExactlyInstanceOf",
+            "isInstanceOfAny",
+            "isOfAnyClassIn",
+            "withStrictTypeChecking",
+            "withEqualsForType",
+            "isNotInstanceOf",
         },
         TestingFramework.GOOGLE_TRUTH: {
-            "isSameInstanceAs", "isNotSameInstanceAs", "isInstanceOf", "isNotInstanceOf"
+            "isSameInstanceAs",
+            "isNotSameInstanceAs",
+            "isInstanceOf",
+            "isNotInstanceOf",
         },
         TestingFramework.HAMCREST: {
-            "sameInstance", "isA", "instanceOf", "typeCompatibleWith"
+            "sameInstance",
+            "isA",
+            "instanceOf",
+            "typeCompatibleWith",
         },
     },
     AssertionType.NULLNESS: {
         TestingFramework.JUNIT5: {
-            "assertNull", "assertNotNull",
+            "assertNull",
+            "assertNotNull",
         },
         TestingFramework.JUNIT4: {
-            "assertNull", "assertNotNull",
+            "assertNull",
+            "assertNotNull",
         },
         TestingFramework.JUNIT3: {
-            "assertNull", "assertNotNull",
+            "assertNull",
+            "assertNotNull",
         },
         TestingFramework.TESTNG: {
-            "assertNull", "assertNotNull",
+            "assertNull",
+            "assertNotNull",
         },
         TestingFramework.ASSERTJ: {
-            "isNull", "isNotNull",
-            "isNullOrEmpty"  # Conflicts with COLLECTION & STRING
+            "isNull",
+            "isNotNull",
+            "isNullOrEmpty",  # Conflicts with COLLECTION & STRING
         },
         TestingFramework.GOOGLE_TRUTH: {
-            "isNull", "isNotNull",
+            "isNull",
+            "isNotNull",
         },
         TestingFramework.HAMCREST: {
-            "nullValue", "notNullValue",
+            "nullValue",
+            "notNullValue",
         },
     },
     AssertionType.NUMERIC_TOLERANCE: {
         TestingFramework.JUNIT5: {
-            "assertEquals", "assertNotEquals",
+            "assertEquals",
+            "assertNotEquals",
         },
         TestingFramework.JUNIT4: {
-            "assertEquals", "assertNotEquals",
+            "assertEquals",
+            "assertNotEquals",
         },
         TestingFramework.JUNIT3: {
             "assertEquals",
         },
         TestingFramework.TESTNG: {
-            "assertEquals", "assertNotEquals",
+            "assertEquals",
+            "assertNotEquals",
         },
         TestingFramework.ASSERTJ: {
-            "isCloseTo", "isNotCloseTo", "isCloseToPercentage", "isNotCloseToPercentage"
+            "isCloseTo",
+            "isNotCloseTo",
+            "isCloseToPercentage",
+            "isNotCloseToPercentage",
         },
-        TestingFramework.GOOGLE_TRUTH: {
-            "isWithin", "isNotWithin"
-        },
+        TestingFramework.GOOGLE_TRUTH: {"isWithin", "isNotWithin"},
         TestingFramework.HAMCREST: {
             "closeTo",
         },
     },
     AssertionType.THROWABLE: {
         TestingFramework.JUNIT5: {
-            "assertThrows", "assertThrowsExactly", "assertDoesNotThrow", "fail",
+            "assertThrows",
+            "assertThrowsExactly",
+            "assertDoesNotThrow",
+            "fail",
         },
         TestingFramework.JUNIT4: {
-            "assertThrows", "fail",
+            "assertThrows",
+            "fail",
         },
         TestingFramework.JUNIT3: {
             "fail",
@@ -155,37 +216,64 @@ ASSERTIONS_CATEGORY_MAP: Dict[AssertionType, Dict[TestingFramework, Set[str]]] =
             "fail",
         },
         TestingFramework.ASSERTJ: {
-            "assertThatThrownBy", "assertThatExceptionOfType", "assertThatCode", "assertThatIOException",
+            "assertThatThrownBy",
+            "assertThatExceptionOfType",
+            "assertThatCode",
+            "assertThatIOException",
             "assertThatNoException",  # Conflicts with WRAPPER
-            "assertThatIllegalArgumentException", "assertThatNullPointerException", "assertThatIllegalStateException",
+            "assertThatIllegalArgumentException",
+            "assertThatNullPointerException",
+            "assertThatIllegalStateException",
             # More conflicts with WRAPPER
-            "doesNotThrowAnyException", "hasMessageThat", "hasMessageStartingWith", "hasMessageEndingWith",
-            "hasMessageMatching", "hasCauseInstanceOf",
-            "hasStackTraceContaining", "hasMessageContaining", "isThrownBy", "hasMessage",
-            "withNoCause", "withMessage", "withMessageContaining", "havingRootCause", "hasMessageContainingAll",
-            "hasMessageNotContaining", "hasMessageNotContainingAny", "hasRootCause", "hasRootCauseMessage",
-            "hasRootCauseInstanceOf", "hasRootCauseExactlyInstanceOf", "havingCause", "hasCause",
-            "hasCauseExactlyInstanceOf"
+            "doesNotThrowAnyException",
+            "hasMessageThat",
+            "hasMessageStartingWith",
+            "hasMessageEndingWith",
+            "hasMessageMatching",
+            "hasCauseInstanceOf",
+            "hasStackTraceContaining",
+            "hasMessageContaining",
+            "isThrownBy",
+            "hasMessage",
+            "withNoCause",
+            "withMessage",
+            "withMessageContaining",
+            "havingRootCause",
+            "hasMessageContainingAll",
+            "hasMessageNotContaining",
+            "hasMessageNotContainingAny",
+            "hasRootCause",
+            "hasRootCauseMessage",
+            "hasRootCauseInstanceOf",
+            "hasRootCauseExactlyInstanceOf",
+            "havingCause",
+            "hasCause",
+            "hasCauseExactlyInstanceOf",
         },
         TestingFramework.GOOGLE_TRUTH: {
-            "assertThatThrownBy", "hasMessageThat", "hasCauseThat"
+            "assertThatThrownBy",
+            "hasMessageThat",
+            "hasCauseThat",
         },
-        TestingFramework.HAMCREST: {},
+        TestingFramework.HAMCREST: set(),
     },
     AssertionType.TIMEOUT: {
         TestingFramework.JUNIT5: {
-            "assertTimeout", "assertTimeoutPreemptively",
+            "assertTimeout",
+            "assertTimeoutPreemptively",
         },
-        TestingFramework.JUNIT4: {},
-        TestingFramework.JUNIT3: {},
-        TestingFramework.TESTNG: {},
-        TestingFramework.ASSERTJ: {},
-        TestingFramework.GOOGLE_TRUTH: {},
-        TestingFramework.HAMCREST: {},
+        TestingFramework.JUNIT4: set(),
+        TestingFramework.JUNIT3: set(),
+        TestingFramework.TESTNG: set(),
+        TestingFramework.ASSERTJ: set(),
+        TestingFramework.GOOGLE_TRUTH: set(),
+        TestingFramework.HAMCREST: set(),
     },
     AssertionType.COLLECTION: {
         TestingFramework.JUNIT5: {
-            "assertArrayEquals", "assertIterableEquals", "assertLinesMatch"
+            "assertArrayEquals",
+            "assertIterableEquals",
+            "assertLinesMatch",
         },
         TestingFramework.JUNIT4: {
             "assertArrayEquals",
@@ -194,131 +282,253 @@ ASSERTIONS_CATEGORY_MAP: Dict[AssertionType, Dict[TestingFramework, Set[str]]] =
             "assertEqualsNoOrder",
         },
         TestingFramework.ASSERTJ: {
-            "isEmpty", "contains", "containsAll",  # Conflicts with built-in methods
-            "containsExactly", "containsExactlyInAnyOrder", "containsOnly", "isNotEmpty",
+            "isEmpty",
+            "contains",
+            "containsAll",  # Conflicts with built-in methods
+            "containsExactly",
+            "containsExactlyInAnyOrder",
+            "containsOnly",
+            "isNotEmpty",
             "hasSize",  # Conflicts with COLLECTION
-            "containsAnyOf", "containsNoneOf", "doesNotContain", "hasSameSizeAs",
-            "containsNoneOf", "containsSequence", "containsSubsequence", "extracting",
-            "filteredOn", "filteredOnNull", "containsOnlyOnce", "singleElement",
-            "first", "last", "element", "allMatch", "anyMatch", "noneMatch",
-            "isSorted", "isSortedAccordingTo", "isSubsetOf", "doesNotContainSequence",
-            "doesNotContainSubsequence", "containsExactlyElementsIn", "containsExactlyInAnyOrderElementsOf",
-            "containsExactlyEntriesOf", "containsOnlyNulls", "containsExactlyElementsOf", "isSubsetOf",
-            "isEqualTo", "isNotEqualTo",  # Conflicts with STRING, EQUALITY
-            "assertThatList", "assertThatSet", "assertThatMap",  # Conflicts with WRAPPER
+            "containsAnyOf",
+            "containsNoneOf",
+            "doesNotContain",
+            "hasSameSizeAs",
+            "containsNoneOf",
+            "containsSequence",
+            "containsSubsequence",
+            "extracting",
+            "filteredOn",
+            "filteredOnNull",
+            "containsOnlyOnce",
+            "singleElement",
+            "first",
+            "last",
+            "element",
+            "allMatch",
+            "anyMatch",
+            "noneMatch",
+            "isSorted",
+            "isSortedAccordingTo",
+            "isSubsetOf",
+            "doesNotContainSequence",
+            "doesNotContainSubsequence",
+            "containsExactlyElementsIn",
+            "containsExactlyInAnyOrderElementsOf",
+            "containsExactlyEntriesOf",
+            "containsOnlyNulls",
+            "containsExactlyElementsOf",
+            "isSubsetOf",
+            "isEqualTo",
+            "isNotEqualTo",  # Conflicts with STRING, EQUALITY
+            "assertThatList",
+            "assertThatSet",
+            "assertThatMap",  # Conflicts with WRAPPER
             "filteredOnAssertions",  # Conflicts with GROUPED
-            "isNullOrEmpty"  # Conflicts with STRING & NULLNESS
+            "isNullOrEmpty",  # Conflicts with STRING & NULLNESS
         },
         TestingFramework.GOOGLE_TRUTH: {
-            "isEmpty", "contains",  # Conflicts with built-in methods
-            "isNotEmpty", "hasSize", "containsExactly", "containsAnyOf",
-            "containsNoneOf", "doesNotContain", "containsAtLeast", "containsExactlyElementsIn", "containsNoDuplicates",
-            "containsAtLeastElementsIn", "containsExactlyEntriesIn", "containsNoneIn",
+            "isEmpty",
+            "contains",  # Conflicts with built-in methods
+            "isNotEmpty",
+            "hasSize",
+            "containsExactly",
+            "containsAnyOf",
+            "containsNoneOf",
+            "doesNotContain",
+            "containsAtLeast",
+            "containsExactlyElementsIn",
+            "containsNoDuplicates",
+            "containsAtLeastElementsIn",
+            "containsExactlyEntriesIn",
+            "containsNoneIn",
         },
         TestingFramework.HAMCREST: {
             "contains",  # Conflicts with built-in methods
             "equalTo",  # Conflicts with STRING, EQUALITY
-            "hasItem", "hasItems", "containsInAnyOrder", "everyItem", "arrayWithSize", "arrayContaining",
-            "arrayContainingInAnyOrder", "hasKey", "hasValue", "hasEntry", "empty", "hasSize",
-            "containsInRelativeOrder", "emptyArray", "emptyCollectionOf", "emptyIterable", "emptyIterableOf",
-            "hasItemInArray", "iterableWithSize",
-            "isIn", "isOneOf",  # Both take lists as parameters where the matcher subject is an element
+            "hasItem",
+            "hasItems",
+            "containsInAnyOrder",
+            "everyItem",
+            "arrayWithSize",
+            "arrayContaining",
+            "arrayContainingInAnyOrder",
+            "hasKey",
+            "hasValue",
+            "hasEntry",
+            "empty",
+            "hasSize",
+            "containsInRelativeOrder",
+            "emptyArray",
+            "emptyCollectionOf",
+            "emptyIterable",
+            "emptyIterableOf",
+            "hasItemInArray",
+            "iterableWithSize",
+            "isIn",
+            "isOneOf",  # Both take lists as parameters where the matcher subject is an element
         },
     },
     AssertionType.STRING: {
         TestingFramework.JUNIT5: {
-            "assertEquals", "assertNotEquals",
+            "assertEquals",
+            "assertNotEquals",
         },
         TestingFramework.JUNIT4: {
-            "assertEquals", "assertNotEquals",
+            "assertEquals",
+            "assertNotEquals",
         },
         TestingFramework.JUNIT3: {
             "assertEquals",
         },
         TestingFramework.TESTNG: {
-            "assertEquals", "assertNotEquals",
+            "assertEquals",
+            "assertNotEquals",
         },
         TestingFramework.ASSERTJ: {
-            "startsWith", "endsWith", "contains", "matches",  # Conflicts with built-in methods
-            "isEqualTo", "isNotEqualTo",  # Conflicts with COLLECTION, EQUALITY
+            "startsWith",
+            "endsWith",
+            "contains",
+            "matches",  # Conflicts with built-in methods
+            "isEqualTo",
+            "isNotEqualTo",  # Conflicts with COLLECTION, EQUALITY
             "containsOnlyOnce",  # Conflicts with COLLECTION
-            "isEqualToIgnoringCase", "isEqualToNormalizingWhitespace",  # Conflicts with EQUALITY
-            "doesNotContain", "doesNotMatch",
+            "isEqualToIgnoringCase",
+            "isEqualToNormalizingWhitespace",  # Conflicts with EQUALITY
+            "doesNotContain",
+            "doesNotMatch",
             "hasSize",  # Conflicts with COLLECTION
-            "hasToString", "containsIgnoringCase", "containsPattern", "isNotEqualToIgnoringCase",
-            "isNotEqualToIgnoringWhitespace", "isNotEqualToNormalizingWhitespace",
-            "isSubstringOf", "isEqualToNormalizingNewlines", "isEqualToIgnoringWhitespace",
+            "hasToString",
+            "containsIgnoringCase",
+            "containsPattern",
+            "isNotEqualToIgnoringCase",
+            "isNotEqualToIgnoringWhitespace",
+            "isNotEqualToNormalizingWhitespace",
+            "isSubstringOf",
+            "isEqualToNormalizingNewlines",
+            "isEqualToIgnoringWhitespace",
             "isEqualToIgnoringNewLines",
-            "isEmpty", "isNotEmpty", # Conflicts with COLLECTION
-            "inUnicode", "inHexadecimal",
-            "isBlank", "isNotBlank", "doesNotContainOnlyWhitespaces",
+            "isEmpty",
+            "isNotEmpty",  # Conflicts with COLLECTION
+            "inUnicode",
+            "inHexadecimal",
+            "isBlank",
+            "isNotBlank",
+            "doesNotContainOnlyWhitespaces",
             "isNullOrEmpty",  # Conflicts with COLLECTION & NULLNESS
         },
         TestingFramework.GOOGLE_TRUTH: {
-            "startsWith", "endsWith", "contains", "matches",  # Conflicts with built-in methods
-            "isEqualTo", "isNotEqualTo", "doesNotContain",
-            "doesNotMatch", "containsMatch", "doesNotContainMatch", "ignoringCase", "hasLength",
+            "startsWith",
+            "endsWith",
+            "contains",
+            "matches",  # Conflicts with built-in methods
+            "isEqualTo",
+            "isNotEqualTo",
+            "doesNotContain",
+            "doesNotMatch",
+            "containsMatch",
+            "doesNotContainMatch",
+            "ignoringCase",
+            "hasLength",
         },
         TestingFramework.HAMCREST: {
-            "startsWith", "endsWith",  # Conflicts with built-in methods
+            "startsWith",
+            "endsWith",  # Conflicts with built-in methods
             "containsString",
-            "equalTo", "equalToIgnoringCase", "equalToIgnoringWhiteSpace",  # Conficts with EQUALITY
-            "matchesPattern", "isEmptyString", "isEmptyOrNullString", "hasToString", "stringContainsInOrder"
+            "equalTo",
+            "equalToIgnoringCase",
+            "equalToIgnoringWhiteSpace",  # Conficts with EQUALITY
+            "matchesPattern",
+            "isEmptyString",
+            "isEmptyOrNullString",
+            "hasToString",
+            "stringContainsInOrder",
         },
     },
     AssertionType.COMPARISON: {
-        TestingFramework.JUNIT5: {},
-        TestingFramework.JUNIT4: {},
-        TestingFramework.JUNIT3: {},
-        TestingFramework.TESTNG: {},
+        TestingFramework.JUNIT5: set(),
+        TestingFramework.JUNIT4: set(),
+        TestingFramework.JUNIT3: set(),
+        TestingFramework.TESTNG: set(),
         TestingFramework.ASSERTJ: {
-            "isGreaterThan", "isGreaterThanOrEqualTo", "isLessThan", "isLessThanOrEqualTo", "isPositive",
-            "isNegative", "isZero", "isNotZero", "isBetween", "isStrictlyBetween"
+            "isGreaterThan",
+            "isGreaterThanOrEqualTo",
+            "isLessThan",
+            "isLessThanOrEqualTo",
+            "isPositive",
+            "isNegative",
+            "isZero",
+            "isNotZero",
+            "isBetween",
+            "isStrictlyBetween",
         },
         TestingFramework.GOOGLE_TRUTH: {
-            "isGreaterThan", "isLessThan", "isAtLeast", "isAtMost",
+            "isGreaterThan",
+            "isLessThan",
+            "isAtLeast",
+            "isAtMost",
         },
         TestingFramework.HAMCREST: {
-            "lessThan", "greaterThan", "lessThanOrEqualTo", "greaterThanOrEqualTo", "comparesEqualTo"
+            "lessThan",
+            "greaterThan",
+            "lessThanOrEqualTo",
+            "greaterThanOrEqualTo",
+            "comparesEqualTo",
         },
     },
     AssertionType.PROPERTY: {
-        TestingFramework.JUNIT5: {},
-        TestingFramework.JUNIT4: {},
-        TestingFramework.JUNIT3: {},
-        TestingFramework.TESTNG: {},
+        TestingFramework.JUNIT5: set(),
+        TestingFramework.JUNIT4: set(),
+        TestingFramework.JUNIT3: set(),
+        TestingFramework.TESTNG: set(),
         TestingFramework.ASSERTJ: {
-            "hasFieldOrProperty", "hasFieldOrPropertyWithValue", "usingRecursiveComparison",
-            "usingRecursiveFieldByFieldElementComparator", "ignoringFields", "ignoringFields",
+            "hasFieldOrProperty",
+            "hasFieldOrPropertyWithValue",
+            "usingRecursiveComparison",
+            "usingRecursiveFieldByFieldElementComparator",
+            "ignoringFields",
+            "ignoringFields",
             "ignoringActualNullFields",
-            "ignoringFieldsOfTypes", "allFieldsSatisfy", "withEqualsForFields", "hasNullFieldsOrProperties",
+            "ignoringFieldsOfTypes",
+            "allFieldsSatisfy",
+            "withEqualsForFields",
+            "hasNullFieldsOrProperties",
             "hasNoNullFieldsOrPropertiesExcept",
-            "isPresent", "isEmpty", "isNotPresent",  # For Optional objects
+            "isPresent",
+            "isEmpty",
+            "isNotPresent",  # For Optional objects
             "assertThatObject",  # Conflicting with WRAPPER
-            "isEqualToIgnoringGivenFields", "isEqualToComparingOnlyGivenFields", "isEqualToIgnoringNullFields"
+            "isEqualToIgnoringGivenFields",
+            "isEqualToComparingOnlyGivenFields",
+            "isEqualToIgnoringNullFields",
             # Conflicting with EQUALITY
         },
-        TestingFramework.GOOGLE_TRUTH: {},
+        TestingFramework.GOOGLE_TRUTH: set(),
         TestingFramework.HAMCREST: {
-            "hasProperty", "hasPropertyWithValue", "samePropertyValueAs", "samePropertyValuesAs"
+            "hasProperty",
+            "hasPropertyWithValue",
+            "samePropertyValueAs",
+            "samePropertyValuesAs",
         },
     },
     AssertionType.GROUPED: {
         TestingFramework.JUNIT5: {
             "assertAll",
         },
-        TestingFramework.JUNIT4: {},
-        TestingFramework.JUNIT3: {},
+        TestingFramework.JUNIT4: set(),
+        TestingFramework.JUNIT3: set(),
         TestingFramework.TESTNG: {
             "assertAll",
         },
         TestingFramework.ASSERTJ: {
-            "assertSoftly", "assertAll", "filteredOnAssertions", "anySatisfy", "noneSatisfy"
+            "assertSoftly",
+            "assertAll",
+            "filteredOnAssertions",
+            "anySatisfy",
+            "noneSatisfy",
         },
-        TestingFramework.GOOGLE_TRUTH: {},
-        TestingFramework.HAMCREST: {
-            "allOf", "anyOf", "both", "and", "either", "or"
-        },
+        TestingFramework.GOOGLE_TRUTH: set(),
+        TestingFramework.HAMCREST: {"allOf", "anyOf", "both", "and", "either", "or"},
     },
     AssertionType.WRAPPER: {
         TestingFramework.JUNIT4: {
@@ -326,12 +536,22 @@ ASSERTIONS_CATEGORY_MAP: Dict[AssertionType, Dict[TestingFramework, Set[str]]] =
         },
         TestingFramework.ASSERTJ: {
             "assertThat",
-            "assertThatThrownBy", "assertThatExceptionOfType", "assertThatCode", "assertThatNoException",
+            "assertThatThrownBy",
+            "assertThatExceptionOfType",
+            "assertThatCode",
+            "assertThatNoException",
             "assertThatIOException",  # Conflicts with THROWABLE
             "assertThatObject",  # Conflict with PROPERTY
-            "assertThatOptional", "assertThatStream", "assertThatFuture", "assertThatCompletableFuture",
-            "assertThatList", "assertThatSet", "assertThatMap",  # Conflicts with COLLECTION
-            "assertThatIllegalArgumentException", "assertThatNullPointerException", "assertThatIllegalStateException",
+            "assertThatOptional",
+            "assertThatStream",
+            "assertThatFuture",
+            "assertThatCompletableFuture",
+            "assertThatList",
+            "assertThatSet",
+            "assertThatMap",  # Conflicts with COLLECTION
+            "assertThatIllegalArgumentException",
+            "assertThatNullPointerException",
+            "assertThatIllegalStateException",
             # Conflicts with THROWABLE
         },
         TestingFramework.GOOGLE_TRUTH: {
@@ -339,56 +559,25 @@ ASSERTIONS_CATEGORY_MAP: Dict[AssertionType, Dict[TestingFramework, Set[str]]] =
         },
         TestingFramework.HAMCREST: {
             "assertThat",
-        }
+        },
     },
     AssertionType.UTILITY: {
-TestingFramework.JUNIT5: {},
-        TestingFramework.JUNIT4: {},
-        TestingFramework.JUNIT3: {},
-        TestingFramework.TESTNG: {},
-        TestingFramework.ASSERTJ: {
-            "as"
-        },
-        TestingFramework.GOOGLE_TRUTH: {
-            "withMessage"
-        },
-        TestingFramework.HAMCREST: {}
-    }
+        TestingFramework.JUNIT5: set(),
+        TestingFramework.JUNIT4: set(),
+        TestingFramework.JUNIT3: set(),
+        TestingFramework.TESTNG: set(),
+        TestingFramework.ASSERTJ: {"as"},
+        TestingFramework.GOOGLE_TRUTH: {"withMessage"},
+        TestingFramework.HAMCREST: set(),
+    },
 }
 
 testing_frameworks_by_type = {
-    "Core": [
-        "junit3",
-        "junit4",
-        "junit5",
-        "testng",
-        "spock",
-        "java-builtin"
-    ],
-    "Assertion": [
-        "hamcrest",
-        "assertj",
-        "google-truth"
-    ],
-    "Mocking": [
-        "mockito",
-        "easymock",
-        "jmock",
-        "jmockit",
-        "powermock"
-    ],
-    "BDD": [
-        "cucumber",
-        "jbehave",
-        "serenity",
-        "gauge"
-    ],
-    "API": [
-        "rest-assured",
-        "webtestclient",
-        "mockmvc"
-        "spring-test"
-    ],
+    "Core": ["junit3", "junit4", "junit5", "testng", "spock", "java-builtin"],
+    "Assertion": ["hamcrest", "assertj", "google-truth"],
+    "Mocking": ["mockito", "easymock", "jmock", "jmockit", "powermock"],
+    "BDD": ["cucumber", "jbehave", "serenity", "gauge"],
+    "API": ["rest-assured", "webtestclient", "mockmvcspring-test"],
     "Android": [
         "espresso",
         "ui-automator",
@@ -397,14 +586,9 @@ testing_frameworks_by_type = {
         "androidx-test",
         "android-test",
         "appium",
-        "robotium"
+        "robotium",
     ],
-    "UI": [
-        "selenium",
-        "selendroid",
-        "selenide",
-        "playright"
-    ],
+    "UI": ["selenium", "selendroid", "selenide", "playright"],
 }
 
 BUILTIN_ASSERTION_COMPLEMENTS: Dict[AssertionType, Set[str]] = {
@@ -412,17 +596,39 @@ BUILTIN_ASSERTION_COMPLEMENTS: Dict[AssertionType, Set[str]] = {
         "equals",
     },
     AssertionType.STRING: {
-        "startsWith", "endsWith", "equalsIgnoreCase", "substring", "charAt", "matches",
-        "isEmpty", "indexOf", "contains", "length",  # Conflicting with COLLECTION
+        "startsWith",
+        "endsWith",
+        "equalsIgnoreCase",
+        "substring",
+        "charAt",
+        "matches",
+        "isEmpty",
+        "indexOf",
+        "contains",
+        "length",  # Conflicting with COLLECTION
     },
     AssertionType.COLLECTION: {
-        "isEmpty", "indexOf", "contains", "length",  # Conflicting with STRING
-        "containsAll", "containsKey", "containsValue",
-        "lastIndexOf", "size", "get", "keySet", "entrySet", "values",
+        "isEmpty",
+        "indexOf",
+        "contains",
+        "length",  # Conflicting with STRING
+        "containsAll",
+        "containsKey",
+        "containsValue",
+        "lastIndexOf",
+        "size",
+        "get",
+        "keySet",
+        "entrySet",
+        "values",
     },
     AssertionType.PROPERTY: {
-        "isPresent", "ifPresent", "anyMatch", "allMatch", "stream"
-    }
+        "isPresent",
+        "ifPresent",
+        "anyMatch",
+        "allMatch",
+        "stream",
+    },
 }
 
 FRAMEWORK_PREFIXES = {
@@ -430,24 +636,20 @@ FRAMEWORK_PREFIXES = {
     "org.junit.jupiter.": TestingFramework.JUNIT5,
     "org.junit.": TestingFramework.JUNIT4,
     "junit.framework.": TestingFramework.JUNIT3,
-
     # TestNG
     "org.testng.": TestingFramework.TESTNG,
-
     # BDD/Spock/Cucumber/JBehave
     "spock.lang.": TestingFramework.SPOCK,
     "io.cucumber.": TestingFramework.CUCUMBER,
     "org.jbehave.": TestingFramework.JBEHAVE,
     "net.serenitybdd.": TestingFramework.SERENITY,
     "com.thoughtworks.gauge.": TestingFramework.GAUGE,
-
     # Mocks
     "org.mockito.": TestingFramework.MOCKITO,
     "org.powermock.": TestingFramework.POWERMOCK,
     "org.easymock.": TestingFramework.EASYMOCK,
     "org.jmockit.": TestingFramework.JMOCKIT,
     "org.jmock.": TestingFramework.JMOCK,
-
     # Assertions / Hamcrest / Truth
     "org.assertj.": TestingFramework.ASSERTJ,
     "org.hamcrest.": TestingFramework.HAMCREST,
@@ -466,24 +668,18 @@ FRAMEWORK_PREFIXES = {
     "android.test.": TestingFramework.ANDROID_TEST,
     "com.robotium": TestingFramework.ROBOTIUM,
     "io.appium": TestingFramework.APPIUM,
-
     # HTTP testing
     "io.restassured.": TestingFramework.REST_ASSURED,
-
     "org.springframework.test.web.reactive.server": TestingFramework.WEBTESTCLIENT,
     "org.springframework.test.web.servlet.": TestingFramework.MOCKMVC,
     # Spring test
     "org.springframework.boot.test.": TestingFramework.SPRING_TEST,
-
     # SELENDROID
     "io.selendroid.": TestingFramework.SELENDROID,
-
     # SELENIUM
     "org.openqa.selenium.": TestingFramework.SELENIUM,
-
     # PLAYRIGHT
     "com.microsoft.playwright.": TestingFramework.PLAYRIGHT,
-
     # SELENIDE
     "com.codeborne.selenide.": TestingFramework.SELENIDE,
     # CYPRESS
@@ -494,29 +690,41 @@ FRAMEWORK_PREFIXES = {
     # WED_DRIVER_IO
 }
 SORTED_FRAMEWORK_PREFIXES = sorted(
-    FRAMEWORK_PREFIXES.items(),
-    key=lambda kv: -len(kv[0])
+    FRAMEWORK_PREFIXES.items(), key=lambda kv: -len(kv[0])
 )
-BOX_PLOT_TYPES = [TestType.API.value, TestType.UI.value, TestType.LIBRARY.value, TestType.UNIT_MODULE.value, TestType.INTEGRATION.value,
-                  TestType.EVOSUITE.value, TestType.ASTER.value]
-BDD_TEST_FRAMEWORKS = [TestingFramework.SPOCK,
-                       TestingFramework.CUCUMBER,
-                       TestingFramework.JBEHAVE,
-                       TestingFramework.SERENITY,
-                       TestingFramework.GAUGE]
+BOX_PLOT_TYPES = [
+    TestType.API.value,
+    TestType.UI.value,
+    TestType.LIBRARY.value,
+    TestType.UNIT_MODULE.value,
+    TestType.INTEGRATION.value,
+    TestType.EVOSUITE.value,
+    TestType.ASTER.value,
+]
+BDD_TEST_FRAMEWORKS = [
+    TestingFramework.SPOCK,
+    TestingFramework.CUCUMBER,
+    TestingFramework.JBEHAVE,
+    TestingFramework.SERENITY,
+    TestingFramework.GAUGE,
+]
 BDD_ANNOTATIONS = ["@Given"]
-UI_TEST_FRAMEWORKS = [TestingFramework.SELENDROID,
-                      TestingFramework.SELENIUM,
-                      TestingFramework.PLAYRIGHT,
-                      TestingFramework.SELENIDE]
+UI_TEST_FRAMEWORKS = [
+    TestingFramework.SELENDROID,
+    TestingFramework.SELENIUM,
+    TestingFramework.PLAYRIGHT,
+    TestingFramework.SELENIDE,
+]
 UI_TEST_FRAMEWORKS_PREFIXES_INVERT = [
     package
     for package, framework in FRAMEWORK_PREFIXES.items()
     if framework in UI_TEST_FRAMEWORKS
 ]
-API_TEST_FRAMEWORKS = [TestingFramework.REST_ASSURED,
-                       TestingFramework.WEBTESTCLIENT,
-                       TestingFramework.MOCKMVC]
+API_TEST_FRAMEWORKS = [
+    TestingFramework.REST_ASSURED,
+    TestingFramework.WEBTESTCLIENT,
+    TestingFramework.MOCKMVC,
+]
 
 API_TEST_FRAMEWORKS_PREFIXES_INVERT = [
     package
@@ -531,24 +739,52 @@ TYPE_TO_PARAMETER_MAP: Dict[str, Dict[ParameterType, Set[str]]] = {
             "String",
         },
         ParameterType.NUMBER: {
-            "byte", "short", "int", "long", "float", "double", "char",
-            "Byte", "Short", "Integer", "Long", "Float", "Double", "Character",
-            "BigInteger", "BigDecimal",
+            "byte",
+            "short",
+            "int",
+            "long",
+            "float",
+            "double",
+            "char",
+            "Byte",
+            "Short",
+            "Integer",
+            "Long",
+            "Float",
+            "Double",
+            "Character",
+            "BigInteger",
+            "BigDecimal",
         },
         ParameterType.BOOLEAN: {
-            "boolean", "Boolean",
+            "boolean",
+            "Boolean",
         },
         ParameterType.COLLECTION: {
             # type[] with collection
-            "List", "Set", "Collection", "Iterable", "Map", "Queue", "Deque", "SortedSet",
-            "NavigableSet", "SortedMap", "NavigableMap", "SortedMap", "Stream", "IntStream",
-            "LongStream", "DoubleStream", "Iterator", "Enumeration", "Optional"
+            "List",
+            "Set",
+            "Collection",
+            "Iterable",
+            "Map",
+            "Queue",
+            "Deque",
+            "SortedSet",
+            "NavigableSet",
+            "SortedMap",
+            "NavigableMap",
+            "SortedMap",
+            "Stream",
+            "IntStream",
+            "LongStream",
+            "DoubleStream",
+            "Iterator",
+            "Enumeration",
+            "Optional",
         },
-        ParameterType.CALLABLE: {
-            "Callable", "Runnable"
-        },
-        ParameterType.LAMBDA_EXPRESSION: {},
-        ParameterType.CLASS_LITERAL: {},
+        ParameterType.CALLABLE: {"Callable", "Runnable"},
+        ParameterType.LAMBDA_EXPRESSION: set(),
+        ParameterType.CLASS_LITERAL: set(),
     },
     "Tree-Sitter": {
         ParameterType.STRING: {
@@ -562,39 +798,39 @@ TYPE_TO_PARAMETER_MAP: Dict[str, Dict[ParameterType, Set[str]]] = {
             "floating_point_type",
             "type_identifier",  # Types like "Integer" and "Boolean"
         },
-        ParameterType.BOOLEAN: {
-            "boolean_type"
-        },
-        ParameterType.COLLECTION: {
-            "generic_type"
-        },
+        ParameterType.BOOLEAN: {"boolean_type"},
+        ParameterType.COLLECTION: {"generic_type"},
         ParameterType.CALLABLE: {
             "method_invocation",
         },
         ParameterType.LAMBDA_EXPRESSION: {
             "lambda_expression",
         },
-        ParameterType.CLASS_LITERAL: {
-            "class_literal"
-        },
-        ParameterType.PROPERTY: {
-            "field_access"
-        },
-        ParameterType.UNKNOWN: {}
-    }
+        ParameterType.CLASS_LITERAL: {"class_literal"},
+        ParameterType.PROPERTY: {"field_access"},
+        ParameterType.UNKNOWN: set(),
+    },
 }
 
-GETTER_METHODS = ['is', 'has', 'get']
+GETTER_PREFIXES = ["is", "has", "get"]
 TEST_ANNOTATIONS = {
-    "@Test", "@ParameterizedTest", "@TestFactory", "@RepeatedTest", "@Given"
+    "@Test",
+    "@ParameterizedTest",
+    "@TestFactory",
+    "@RepeatedTest",
+    "@Given",
 }
 
 TREE_SITTER_CALLABLE_TYPES = {
-    "method_invocation", "class_instance_creation_expression", "object_creation_expression",
-    "lambda_expression", "method_reference", "assert_statement"
+    "method_invocation",
+    "object_creation_expression",
+    "lambda_expression",
+    "method_reference",
+    "assert_statement",
 }
 CLDK_TREE_SITTER_CALLABLE_TYPES = {
-    "method_invocation", "class_instance_creation_expression", "object_creation_expression",
+    "method_invocation",
+    "object_creation_expression",
 }
 # Might also consider "explicit_constructor_invocation" and "super_method_invocation" at some point
 
@@ -621,26 +857,40 @@ CLEANUP_NAME_PATTERNS = [
 CLEANUP_CATEGORY_TO_RECEIVER_SUBSTRING: Dict[CleanupType, Set[str]] = {
     # I/O streams, readers, writers, channels, etc...
     CleanupType.INPUT_OUTPUT: {
-        "stream", "reader", "writer", "file", "randomaccess",
+        "stream",
+        "reader",
+        "writer",
+        "file",
+        "randomaccess",
         "channel",  # Conflicts with NETWORK
     },
     # Network-related resources (HTTP, sockets, etc...)
     CleanupType.NETWORK: {
-        "socket", "server", "http", "websocket",
-        "channel"  # Conflicts with I/O
+        "socket",
+        "server",
+        "http",
+        "websocket",
+        "channel",  # Conflicts with I/O
     },
     # Databases and persistence
     CleanupType.DATABASE: {
-        "connection", "datasource", "statement", "resultset", "entitymanager", "session",
+        "connection",
+        "datasource",
+        "statement",
+        "resultset",
+        "entitymanager",
+        "session",
     },
     # Any current processes
     CleanupType.CONCURRENCY: {
-        "executor", "thread", "lock", "semaphore", "process",
+        "executor",
+        "thread",
+        "lock",
+        "semaphore",
+        "process",
     },
     # GUI / graphics toolkits
-    CleanupType.USER_INTERFACE: {
-        "frame", "window", "dialog", "image"
-    }
+    CleanupType.USER_INTERFACE: {"frame", "window", "dialog", "image"},
 }
 
 CLEANUP_CATEGORY_TO_PREFIXES: Dict[CleanupType, Set[str]] = {
@@ -694,118 +944,92 @@ CLEANUP_CATEGORY_TO_PREFIXES: Dict[CleanupType, Set[str]] = {
         "javafx.stage.",
         "javafx.scene.",
         "org.eclipse.swt.widgets.",
-    }
+    },
 }
 
 # See how many cases of com.fasterxml.jackson for disambiguating
 STRUCTURED_INPUT_MAP: Dict[InputType, Dict[str, List[str]]] = {
     InputType.JSON: {
         "com.fasterxml.jackson.core.JsonFactory": [
-            "createParser", # Used for returning JsonParser
+            "createParser",  # Used for returning JsonParser
         ],
         "com.google.gson.Gson": [
-            "fromJson", # Gson.fromJson
+            "fromJson",  # Gson.fromJson
         ],
-        "com.google.gson.JsonParser": [
-            "parseReader"
+        "com.google.gson.JsonParser": ["parseReader"],
+        "org.json.JSONObject": ["new JSONObject"],
+        "org.json.JSONArray": ["new JSONArray"],
+        "org.json.simple.parser.JSONParser": ["parse"],
+        "javax.json.Json": ["createReader"],
+        "javax.json.bind.Jsonb": ["fromJson"],
+        "com.fasterxml.jackson.databind.ObjectMapper": [  # Ambiguous over YAML, JSON, CSV, or XML (uses the respective Mapper)
+            "readValue",  # NOTE: Can be YAML or JSON depending on the factory argument in ObjectMapper(...) constructor or whether it is new YAMLMapper()
+            "readTree",
         ],
-        "org.json.JSONObject": [
-            "new JSONObject"
-        ],
-        "org.json.JSONArray": [
-            "new JSONArray"
-        ],
-        "org.json.simple.parser.JSONParser": [
-            "parse"
-        ],
-        "javax.json.Json": [
-            "createReader"
-        ],
-        "javax.json.bind.Jsonb": [
-            "fromJson"
-        ],
-        "com.fasterxml.jackson.databind.ObjectMapper": [ # Ambiguous over YAML, JSON, CSV, or XML (uses the respective Mapper)
-            "readValue", # NOTE: Can be YAML or JSON depending on the factory argument in ObjectMapper(...) constructor or whether it is new YAMLMapper()
-            "readTree"
-        ],
-        "com.fasterxml.jackson.databind.ObjectReader": [ # Ambiguous over JSON, YAML, CSV, XML
+        "com.fasterxml.jackson.databind.ObjectReader": [  # Ambiguous over JSON, YAML, CSV, XML
             "readValue",
             "readValues",
-            "readTree"
+            "readTree",
+        ],
+        "com.fasterxml.jackson.databind.json.JsonMapper": [
+            "readValue",
+            "readTree",
         ],
     },
-
     InputType.XML: {
         "javax.xml.parsers.DocumentBuilder": [
             "parse",
         ],
-        "java.xml.parsers.SAXParser": [
+        "javax.xml.parsers.SAXParser": [
             "parse",
         ],
         "javax.xml.stream.XMLInputFactory": [
             "createXMLStreamReader",
-            "createXMLEventReader"
+            "createXMLEventReader",
         ],
-        "javax.xml.bind.Unmarshaller": [
-            "unmarshal"
-        ],
-        "javax.xml.bind.JAXB": [
-            "unmarshal"
-        ],
-        "org.dom4j.io.SAXReader": [
-            "read"
-        ],
-        "org.jdom2.input.SAXBuilder": [
-            "build"
-        ],
-        "nu.xom.Builder": [
-            "build"
-        ],
+        "javax.xml.bind.Unmarshaller": ["unmarshal"],
+        "javax.xml.bind.JAXB": ["unmarshal"],
+        "org.dom4j.io.SAXReader": ["read"],
+        "org.jdom2.input.SAXBuilder": ["build"],
+        "nu.xom.Builder": ["build"],
         "com.thoughtworks.xstream.XStream": [
             "fromXML",
         ],
-        "com.fasterxml.jackson.dataformat.xml.XmlMapper": [
-            "readValue",
-            "readTree"
+        "com.fasterxml.jackson.dataformat.xml.XmlMapper": ["readValue", "readTree"],
+        "com.fasterxml.jackson.databind.ObjectMapper": [  # Ambiguous over YAML, JSON, CSV, or XML (uses the respective Mapper)
+            "readValue",  # NOTE: Can be YAML or JSON depending on the factory argument in ObjectMapper(...) constructor or whether it is new YAMLMapper()
+            "readTree",
         ],
-        "com.fasterxml.jackson.databind.ObjectMapper": [ # Ambiguous over YAML, JSON, CSV, or XML (uses the respective Mapper)
-            "readValue", # NOTE: Can be YAML or JSON depending on the factory argument in ObjectMapper(...) constructor or whether it is new YAMLMapper()
-            "readTree"
-        ],
-        "com.fasterxml.jackson.databind.ObjectReader": [ # Ambiguous over JSON, YAML, CSV, XML
+        "com.fasterxml.jackson.databind.ObjectReader": [  # Ambiguous over JSON, YAML, CSV, XML
             "readValue",
             "readValues",
-            "readTree"
+            "readTree",
         ],
     },
-
     InputType.YAML: {
         "org.yaml.snakeyaml.Yaml": [
             "load",
             "loadAll",
             "loadAs",
         ],
-        "com.esotericsoftware.yamlbeans.YamlReader": [
-            "read"
-        ],
+        "com.esotericsoftware.yamlbeans.YamlReader": ["read"],
         "com.fasterxml.jackson.dataformat.yaml.YAMLMapper": [
-            "readValue", # NOTE: Can be YAML or JSON depending on the factory argument in ObjectMapper(...) constructor or whether it is new YAMLMapper()
-            "readTree"
+            "readValue",  # NOTE: Can be YAML or JSON depending on the factory argument in ObjectMapper(...) constructor or whether it is new YAMLMapper()
+            "readTree",
         ],
-        "com.fasterxml.jackson.databind.ObjectMapper": [ # Ambiguous over YAML, JSON, CSV, or XML (uses the respective Mapper)
-            "readValue", # NOTE: Can be YAML or JSON depending on the factory argument in ObjectMapper(...) constructor or whether it is new YAMLMapper()
-            "readTree"
+        "com.fasterxml.jackson.databind.ObjectMapper": [  # Ambiguous over YAML, JSON, CSV, or XML (uses the respective Mapper)
+            "readValue",  # NOTE: Can be YAML or JSON depending on the factory argument in ObjectMapper(...) constructor or whether it is new YAMLMapper()
+            "readTree",
         ],
-        "com.fasterxml.jackson.databind.ObjectReader": [ # Ambiguous over JSON, YAML, CSV, XML
+        "com.fasterxml.jackson.databind.ObjectReader": [  # Ambiguous over JSON, YAML, CSV, XML
             "readValue",
             "readValues",
-            "readTree"
+            "readTree",
         ],
     },
-
     InputType.CSV: {
         "org.apache.commons.csv.CSVParser": [
-            "new CSVParser", # Constructor call that processes FileReader into CSV
+            "new CSVParser",  # Constructor call that processes FileReader into CSV
         ],
         "org.apache.commons.csv.CSVFormat": [
             "parse",
@@ -816,39 +1040,25 @@ STRUCTURED_INPUT_MAP: Dict[InputType, Dict[str, List[str]]] = {
         "com.opencsv.CSVReaderBuilder": [
             "new CSVReaderBuilder",
         ],
-        "com.opencsv.bean.CsvToBeanBuilder": [
-            "new CsvToBeanBuilder"
-        ],
-        "com.univocity.parsers.csv.CsvParser": [
-            "parseAll",
-            "beginParsing"
-        ],
+        "com.opencsv.bean.CsvToBeanBuilder": ["new CsvToBeanBuilder"],
+        "com.univocity.parsers.csv.CsvParser": ["parseAll", "beginParsing"],
         "org.supercsv.io.CsvListReader": [
             "new CsvListReader",
         ],
-        "org.supercsv.io.CsvBeanReader": [
-            "new CsvBeanReader"
+        "org.supercsv.io.CsvBeanReader": ["new CsvBeanReader"],
+        "com.fasterxml.jackson.dataformat.csv.CsvMapper": ["readValue", "readTree"],
+        "com.fasterxml.jackson.databind.ObjectMapper": [  # Ambiguous over YAML, JSON, CSV, or XML (uses the respective Mapper)
+            "readValue",  # NOTE: Can be YAML or JSON depending on the factory argument in ObjectMapper(...) constructor or whether it is new YAMLMapper()
+            "readTree",
         ],
-        "com.fasterxml.jackson.dataformat.csv.CsvMapper": [
-            "readValue",
-            "readTree"
-        ],
-        "com.fasterxml.jackson.databind.ObjectMapper": [ # Ambiguous over YAML, JSON, CSV, or XML (uses the respective Mapper)
-            "readValue", # NOTE: Can be YAML or JSON depending on the factory argument in ObjectMapper(...) constructor or whether it is new YAMLMapper()
-            "readTree"
-        ],
-        "com.fasterxml.jackson.databind.ObjectReader": [ # Ambiguous over JSON, YAML, CSV, XML
+        "com.fasterxml.jackson.databind.ObjectReader": [  # Ambiguous over JSON, YAML, CSV, XML
             "readValue",
             "readValues",
-            "readTree"
+            "readTree",
         ],
     },
-
     InputType.PROPERTIES: {
-        "java.util.Properties": [
-            "load",
-            "loadFromXML"
-        ],
+        "java.util.Properties": ["load", "loadFromXML"],
         "org.apache.commons.configuration.PropertiesConfiguration": [
             "new PropertiesConfiguration"
         ],
@@ -857,63 +1067,169 @@ STRUCTURED_INPUT_MAP: Dict[InputType, Dict[str, List[str]]] = {
         ],
         "org.springframework.core.io.support.PropertiesLoaderUtils": [
             "loadProperties",
-        ]
+        ],
     },
-
     InputType.XLS: {
-        "org.apache.poi.hssf.usermodel.HSSFWorkbook": [ # For .xls
+        "org.apache.poi.hssf.usermodel.HSSFWorkbook": [  # For .xls
             "new HSSFWorkbook",
         ],
-        "org.apache.poi.xssf.usermodel.XSSFWorkbook": [ # For .xlsx
+        "org.apache.poi.xssf.usermodel.XSSFWorkbook": [  # For .xlsx
             "new XSSFWorkbook",
         ],
         "org.apache.poi.ss.usermodel.WorkbookFactory": [
             "create",
         ],
         "com.alibaba.excel.EasyExcel": [
-            "read" # Only for .xlsx
+            "read"  # Only for .xlsx
         ],
-        "jxl.Workbook": [ # Only for .xls
+        "jxl.Workbook": [  # Only for .xls
             "getWorkbook"
-        ]
+        ],
     },
-
-    # Only SQL get operations
+    # Only SQL/query read operations
     InputType.SQL: {
-        "java.sql.Statement": [ # Could be any SQL query
-            "executeQuery",
-        ],
-        "java.sql.PreparedStatement": [
-            "executeQuery",
-        ],
-        "java.sql.CallableStatement": [
-            "executeQuery",
-        ],
-        "javax.persistence": [
+        # JDBC
+        "java.sql.Statement": ["executeQuery"],
+        "java.sql.PreparedStatement": ["executeQuery"],
+        "java.sql.CallableStatement": ["executeQuery"],
+        # JPA (javax namespace)
+        "javax.persistence.EntityManager": ["find", "getReference"],
+        "javax.persistence.Query": [
             "getResultList",
-            "getSingleResult"
+            "getSingleResult",
+            "getResultStream",
         ],
-        "org.hibernate.Session": [
-            "get",
+        "javax.persistence.TypedQuery": [
+            "getResultList",
+            "getSingleResult",
+            "getResultStream",
         ],
+        "javax.persistence.StoredProcedureQuery": [
+            "getResultList",
+            "getSingleResult",
+            "execute",
+        ],
+        # JPA (jakarta namespace, JPA 3.0+)
+        "jakarta.persistence.EntityManager": ["find", "getReference"],
+        "jakarta.persistence.Query": [
+            "getResultList",
+            "getSingleResult",
+            "getSingleResultOrNull",
+            "getResultStream",
+        ],
+        "jakarta.persistence.TypedQuery": [
+            "getResultList",
+            "getSingleResult",
+            "getSingleResultOrNull",
+            "getResultStream",
+        ],
+        "jakarta.persistence.StoredProcedureQuery": [
+            "getResultList",
+            "getSingleResult",
+            "getSingleResultOrNull",
+            "execute",
+        ],
+        # Hibernate Session
+        "org.hibernate.Session": ["get", "find", "load", "getReference"],
+        "org.hibernate.StatelessSession": ["get"],
+        # Hibernate query types
+        "org.hibernate.query.Query": [
+            "list",
+            "getResultList",
+            "getSingleResult",
+            "uniqueResult",
+            "uniqueResultOptional",
+            "scroll",
+            "stream",
+            "getResultStream",
+        ],
+        "org.hibernate.query.NativeQuery": [
+            "list",
+            "getResultList",
+            "getSingleResult",
+            "uniqueResult",
+            "uniqueResultOptional",
+            "scroll",
+            "stream",
+        ],
+        "org.hibernate.query.SelectionQuery": [  # Hibernate 6+
+            "list",
+            "getResultList",
+            "getSingleResult",
+            "getSingleResultOrNull",
+            "uniqueResult",
+            "uniqueResultOptional",
+            "scroll",
+            "stream",
+            "getResultStream",
+        ],
+        "org.hibernate.Criteria": [
+            "list",
+            "uniqueResult",
+            "scroll",
+        ],  # Deprecated but prevalent
+        # Spring JDBC
         "org.springframework.jdbc.core.JdbcTemplate": [
             "query",
             "queryForList",
-            "queryForObject"
+            "queryForObject",
+            "queryForMap",
+            "queryForRowSet",
+            "queryForStream",
         ],
+        "org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate": [
+            "query",
+            "queryForList",
+            "queryForObject",
+            "queryForMap",
+            "queryForRowSet",
+        ],
+        # MyBatis
         "org.apache.ibatis.session.SqlSession": [
             "selectList",
             "selectOne",
+            "selectMap",
+            "selectCursor",
         ],
+        # jOOQ
         "org.jooq.DSLContext": [
             "fetch",
             "fetchOne",
             "fetchAny",
             "fetchInto",
-            "fetchOneInto"
-        ]
+            "fetchOneInto",
+            "fetchSingle",
+            "fetchOptional",
+            "fetchValue",
+            "fetchValues",
+        ],
+        "org.jooq.ResultQuery": [
+            "fetch",
+            "fetchOne",
+            "fetchAny",
+            "fetchInto",
+            "fetchOneInto",
+            "fetchSingle",
+            "fetchOptional",
+            "fetchMany",
+            "fetchLazy",
+            "stream",
+        ],
+        # QueryDSL
+        "com.querydsl.jpa.impl.JPAQuery": [
+            "fetch",
+            "fetchOne",
+            "fetchFirst",
+            "fetchCount",
+        ],
+        "com.querydsl.jpa.hibernate.HibernateQuery": [
+            "fetch",
+            "fetchOne",
+            "fetchFirst",
+            "fetchCount",
+        ],
+        "com.querydsl.sql.SQLQuery": ["fetch", "fetchOne", "fetchFirst", "fetchCount"],
     },
-
     InputType.HTML: {
         "org.jsoup.Jsoup": [
             "parse",
@@ -927,50 +1243,82 @@ STRUCTURED_INPUT_MAP: Dict[InputType, Dict[str, List[str]]] = {
         ],
         "org.w3c.tidy.Tidy": [
             "parseDOM",
-        ]
+        ],
     },
-
     InputType.BINARY: {
-        "java.io": [
-            "new FileInputStream",
-            "new RandomAccessFile"
-        ],
-        "java.nio.file.Files": [
-            "newInputStream",
-            "readAllBytes"
-        ],
-        "java.nio.channels.FileChannel": [
-            "open"
-        ],
+        "java.io.FileInputStream": ["new FileInputStream"],
+        "java.io.RandomAccessFile": ["new RandomAccessFile"],
+        "java.nio.file.Files": ["newInputStream", "readAllBytes"],
+        "java.nio.channels.FileChannel": ["open"],
         "java.io.DataInputStream": [
             "new DataInputStream",
         ],
-        "org.apache.commons.io.FileUtils": [
-            "readFileToByteArray"
-        ],
-        "org.apache.commons.io.IOUtils": [
-            "toByteArray"
-        ]
+        "org.apache.commons.io.FileUtils": ["readFileToByteArray"],
+        "org.apache.commons.io.IOUtils": ["toByteArray"],
     },
-
     InputType.SERIALIZED: {
         "java.io.ObjectInputStream": [
             "new ObjectInputStream",
         ],
-        "com.esotericsoftware.kryo.Kryo": [
-            "readObject"
-        ],
-        "com.caucho.hessian.io.HessianInput": [
-            "new HessianInput"
-        ]
+        "com.esotericsoftware.kryo.Kryo": ["readObject"],
+        "com.caucho.hessian.io.HessianInput": ["new HessianInput"],
     },
-
+    # NOTE: Generated-class static methods (MyMessage.parseFrom(...)) use app-specific
+    # receiver types and cannot be detected via prefix matching. Only library-type patterns
+    # (Parser, DynamicMessage, JsonFormat, TextFormat, Any) are detected here.
+    InputType.PROTOBUF: {
+        "com.google.protobuf.Parser": [
+            "parseFrom",
+            "parsePartialFrom",
+            "parseDelimitedFrom",
+        ],
+        "com.google.protobuf.DynamicMessage": ["parseFrom"],
+        "com.google.protobuf.Any": ["unpack"],
+        "com.google.protobuf.TextFormat": ["merge"],
+        "com.google.protobuf.TextFormat.Parser": ["merge"],
+        "com.google.protobuf.util.JsonFormat.Parser": ["merge"],
+    },
+    InputType.AVRO: {
+        # DatumReader hierarchy
+        "org.apache.avro.io.DatumReader": ["read"],
+        "org.apache.avro.specific.SpecificDatumReader": [
+            "new SpecificDatumReader",
+            "read",
+        ],
+        "org.apache.avro.generic.GenericDatumReader": [
+            "new GenericDatumReader",
+            "read",
+        ],
+        "org.apache.avro.reflect.ReflectDatumReader": [
+            "new ReflectDatumReader",
+            "read",
+        ],
+        # File readers
+        "org.apache.avro.file.DataFileReader": [
+            "new DataFileReader",
+            "openReader",
+            "next",
+        ],
+        "org.apache.avro.file.DataFileStream": ["new DataFileStream", "next"],
+        "org.apache.avro.file.FileReader": ["next"],
+        # Decoder factory (entry point for bare DatumReader usage in tests)
+        "org.apache.avro.io.DecoderFactory": [
+            "binaryDecoder",
+            "jsonDecoder",
+            "directBinaryDecoder",
+        ],
+    },
     InputType.RESOURCE: {
         "java.lang.Class": [
-            "getResource", "getResourceAsStream",
+            "getResource",
+            "getResourceAsStream",
         ],
         "java.lang.ClassLoader": [
-            "getResource", "getResources", "getResourceAsStream", "getSystemResource", "getSystemResourceAsStream",
+            "getResource",
+            "getResources",
+            "getResourceAsStream",
+            "getSystemResource",
+            "getSystemResourceAsStream",
             "getSystemResources",
         ],
         "org.springframework.core.io.ClassPathResource": [
@@ -978,6 +1326,82 @@ STRUCTURED_INPUT_MAP: Dict[InputType, Dict[str, List[str]]] = {
         ],
         "org.springframework.core.io.ResourceLoader": [
             "getResource",
-        ]
-    }
+        ],
+    },
+}
+
+# Annotation names that directly indicate a structured test input.
+# Maps the annotation prefix (before any parenthesized arguments) to its InputType(s).
+ANNOTATION_INPUT_MAP: Dict[str, List[InputType]] = {
+    # Spring Test -- SQL scripts executed before/after a test
+    "@Sql": [InputType.SQL],
+    "@SqlGroup": [InputType.SQL],
+    # Spring Test -- external property/YAML configuration
+    "@TestPropertySource": [InputType.PROPERTIES],
+    # JUnit 5 parameterized -- inline CSV rows
+    "@CsvSource": [InputType.CSV],
+    # JUnit 5 parameterized -- CSV loaded from file
+    "@CsvFileSource": [InputType.CSV],
+    # JUnit Pioneer extension -- inline JSON
+    "@JsonSource": [InputType.JSON],
+    # JUnit Pioneer extension -- JSON loaded from file
+    "@JsonFileSource": [InputType.JSON],
+}
+
+# Wrapper types that should be "seen through" to find the contained application class.
+# These are types that wrap a single value without changing its semantic meaning.
+# Uses short names (not FQN) for matching after stripping package prefix.
+TRANSPARENT_VALUE_WRAPPERS: set[str] = {
+    # Java Optional variants
+    "Optional",
+    "OptionalInt",
+    "OptionalLong",
+    "OptionalDouble",
+    # Functional interfaces that wrap/produce values
+    "Supplier",
+    "Provider",
+    "Callable",
+    "Lazy",
+    # Async wrappers
+    "Future",
+    "CompletableFuture",
+    "CompletionStage",
+    "ListenableFuture",
+    "SettableFuture",
+    # Atomic references
+    "AtomicReference",
+    "AtomicStampedReference",
+    "AtomicMarkableReference",
+    "Reference",
+    "WeakReference",
+    "SoftReference",
+    "PhantomReference",
+    # Reactive types (Project Reactor)
+    "Mono",
+    "Flux",
+    # Reactive types (RxJava)
+    "Single",
+    "Maybe",
+    "Observable",
+    "Flowable",
+    "Completable",
+    # Vavr/functional-java
+    "Try",
+    "Either",
+    "Validation",
+    "Option",
+    # Spring wrappers
+    "ResponseEntity",
+    "HttpEntity",
+    "RequestEntity",
+    "DeferredResult",
+    "ListenableFutureTask",
+    # Holder patterns
+    "Holder",
+    "MutableObject",
+    "Box",
+    # Result/Response patterns
+    "Result",
+    "Response",
+    "Reply",
 }

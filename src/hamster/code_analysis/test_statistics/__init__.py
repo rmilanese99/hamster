@@ -1,4 +1,6 @@
-from .call_and_assertion_sequence_details_info import CallAndAssertionSequenceDetailsInfo
+from .call_and_assertion_sequence_details_info import (
+    CallAndAssertionSequenceDetailsInfo,
+)
 from .input_analysis import InputAnalysis
 from .project_analysis_info import ProjectAnalysisInfo
 from .setup_analysis_info import SetupAnalysisInfo

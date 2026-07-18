@@ -11,16 +11,16 @@ import ray
 from hamster.code_analysis.model.models import ProjectAnalysis
 
 old_dir = "/home/hamster/xvdc/hamster_results/model"
-new_dir = '/home/hamster/xvdc/hamster_results/new_model'
+new_dir = "/home/hamster/xvdc/hamster_results/new_model"
 
 
 class HamsterModelComparator:
     def __init__(self, old_model: str, new_model: str):
-        with open(old_model, 'r') as f:
+        with open(old_model, "r") as f:
             file_content = json.load(f)
             self.old_project_analysis = ProjectAnalysis.model_validate(file_content)
 
-        with open(new_model, 'r') as f:
+        with open(new_model, "r") as f:
             file_content = json.load(f)
             self.new_project_analysis = ProjectAnalysis.model_validate(file_content)
 
@@ -39,7 +39,9 @@ class HamsterModelComparator:
                 if method.is_mocking_used:
                     new_mocking_count += method.number_of_mocks_created
 
-        assert old_mocking_count == new_mocking_count, f"Mocking counts differ: old {old_mocking_count}, new {new_mocking_count}"
+        assert old_mocking_count == new_mocking_count, (
+            f"Mocking counts differ: old {old_mocking_count}, new {new_mocking_count}"
+        )
 
 
 @ray.remote
@@ -48,8 +50,8 @@ def compare_hamster_models(old_file: str, new_file: str):
     comparator.compare_mocking()
 
 
-if __name__ == '__main__':
-    pattern = os.path.join(old_dir, "**", 'hamster.json')
+if __name__ == "__main__":
+    pattern = os.path.join(old_dir, "**", "hamster.json")
     all_old_files = glob.glob(pattern, recursive=True)
     print(f"Found {len(all_old_files)} old files.")
 

@@ -149,8 +149,8 @@ src/hamster/code_analysis/
 ├── model/                   # Data models and enums
 │   └── models.py
 ├── common/                  # Shared analysis utilities
-│   ├── common_analysis.py
-│   └── reachability.py
+│   ├── exceptions.py        # Custom exceptions for analysis errors
+│   └── java_analyzer.py     # CommonAnalysis and Reachability classes
 └── utils/                   # Constants and configuration
     └── constants.py
 ```

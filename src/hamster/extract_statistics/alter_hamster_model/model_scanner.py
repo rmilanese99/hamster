@@ -13,7 +13,7 @@ dir = "/home/hamster/xvdc/hamster_results/model"
 
 class HamsterModelScanner:
     def __init__(self, model_file: str):
-        with open(model_file, 'r') as f:
+        with open(model_file, "r") as f:
             file_content = json.load(f)
             self.project_analysis = ProjectAnalysis.model_validate(file_content)
 
@@ -27,8 +27,8 @@ def scan_hamster_models(file: str):
     comparator.scan_assertions()
 
 
-if __name__ == '__main__':
-    pattern = os.path.join(dir, "**", 'hamster.json')
+if __name__ == "__main__":
+    pattern = os.path.join(dir, "**", "hamster.json")
     all_files = glob.glob(pattern, recursive=True)
     print(f"Found {len(all_files)} old files.")
 

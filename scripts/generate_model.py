@@ -20,7 +20,7 @@ def process_repo(repo_dir, analysis_dir, model_dir, src_dir):
     print(f"Processing '{repo_name}'...", flush=True)
 
     cmd = [
-        # "poetry", "run",
+        # "uv", "run",
         "python", "-m", "hamster.cli", "analysis",
         "--project-path", str(repo_dir),
         "--analysis-path", str(analysis_file_dir),

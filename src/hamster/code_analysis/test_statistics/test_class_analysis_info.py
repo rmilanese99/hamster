@@ -1,23 +1,27 @@
-from typing import List, Dict
+from typing import Dict, List
 
 from cldk.analysis.java import JavaAnalysis
+
+from hamster.code_analysis.common import CommonAnalysis
+from hamster.code_analysis.model.models import (
+    SetupAnalysis,
+    TeardownAnalysis,
+    TestClassAnalysis,
+    TestingFramework,
+)
 
 from .setup_analysis_info import SetupAnalysisInfo
 from .teardown_analysis_info import TeardownAnalysisInfo
 from .test_method_analysis_info import TestMethodAnalysisInfo
 
-from hamster.code_analysis.model.models import (
-    TestClassAnalysis,
-    TestingFramework,
-    SetupAnalysis,
-    TeardownAnalysis,
-)
-from hamster.code_analysis.common import CommonAnalysis
-
 
 class TestClassAnalysisInfo:
     def __init__(
-        self, analysis: JavaAnalysis, dataset_name: str, application_classes: List[str]
+        self,
+        analysis: JavaAnalysis,
+        dataset_name: str,
+        application_classes: List[str],
+        test_utility_classes: List[str] | None = None,
     ) -> None:
         """
         Initializes the TestClassAnalysisInfo with the given analysis, dataset name, and application classes.
@@ -26,10 +30,12 @@ class TestClassAnalysisInfo:
             analysis: The JavaAnalysis instance.
             dataset_name: The name of the dataset.
             application_classes: List of application classes.
+            test_utility_classes: List of test utility classes.
         """
         self.analysis = analysis
         self.dataset_name = dataset_name
         self.application_classes = application_classes
+        self.test_utility_classes = test_utility_classes or []
 
     def get_test_class_analysis(
         self, qualified_class_name: str, test_methods: List[str] | None
@@ -73,6 +79,7 @@ class TestClassAnalysisInfo:
             analysis=self.analysis,
             dataset_name=self.dataset_name,
             application_classes=self.application_classes,
+            test_utility_classes=self.test_utility_classes,
         )
 
         # Analyze each test method individually
@@ -144,7 +151,10 @@ class TestClassAnalysisInfo:
             for setup_method in method_signatures:
                 setup_analyses.append(
                     SetupAnalysisInfo(self.analysis).get_setup_method_details(
-                        declaring_class, setup_method, frameworks_for_class
+                        declaring_class,
+                        setup_method,
+                        frameworks_for_class,
+                        test_utility_classes=self.test_utility_classes,
                     )
                 )
 
@@ -172,7 +182,10 @@ class TestClassAnalysisInfo:
             for teardown_method in method_signatures:
                 teardown_analyses.append(
                     TeardownAnalysisInfo(self.analysis).get_teardown_method_details(
-                        declaring_class, teardown_method, frameworks_for_class
+                        declaring_class,
+                        teardown_method,
+                        frameworks_for_class,
+                        test_utility_classes=self.test_utility_classes,
                     )
                 )
 

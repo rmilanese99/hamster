@@ -1,22 +1,17 @@
-import time
 from pathlib import Path
 from types import SimpleNamespace
-from typing import List
 
 import pytest
-
 from cldk import CLDK
 from cldk.analysis import AnalysisLevel
 
 from hamster.code_analysis.common import CommonAnalysis
-from hamster.code_analysis.focal_class_method.focal_class_method import FocalClassMethod
 from hamster.code_analysis.model.models import (
-    FocalClass,
     MockingFramework,
+    ProjectAnalysis,
     TestingFramework,
 )
 from hamster.code_analysis.test_statistics import (
-    CallAndAssertionSequenceDetailsInfo,
     ProjectAnalysisInfo,
     SetupAnalysisInfo,
     TestClassAnalysisInfo,
@@ -24,44 +19,59 @@ from hamster.code_analysis.test_statistics import (
 )
 
 BASE_DIR = Path(__file__).resolve().parent
-PROJECT_PATH_RELATIVE = "resources/spring-petclinic"
-ANALYSIS_JSON_PATH_RELATIVE = "resources/output/spring-petclinic"
-PROJECT_PATH = str(BASE_DIR / PROJECT_PATH_RELATIVE)
-ANALYSIS_JSON_PATH = str(BASE_DIR / ANALYSIS_JSON_PATH_RELATIVE)
-DATASET_NAME = "spring-petclinic"
+TEST_SOURCES = BASE_DIR / "resources"
+TEST_OUTPUT = BASE_DIR / "output"
 
 
-@pytest.fixture
-def analysis_data(request):
-    start_time = time.time()
+def save_project_analysis(dataset_name: str, project_analysis: ProjectAnalysis) -> None:
+    output_dir = TEST_OUTPUT / dataset_name
+    output_dir.mkdir(parents=True, exist_ok=True)
+    with (output_dir / "hamster.json").open("w") as f:
+        f.write(project_analysis.model_dump_json())
+
+
+def create_analysis_data(dataset_name: str) -> SimpleNamespace:
     analysis = CLDK(language="java").analysis(
-        project_path=PROJECT_PATH,
+        project_path=str(TEST_SOURCES / dataset_name),
         analysis_level=AnalysisLevel.symbol_table,
-        analysis_json_path=ANALYSIS_JSON_PATH,
+        analysis_json_path=str(TEST_OUTPUT / dataset_name),
         eager=False,
     )
-    dataset_name = DATASET_NAME
 
     common_analysis = CommonAnalysis(analysis)
-    test_class_methods, application_class = (
-        common_analysis.get_test_methods_classes_and_application_classes()
-    )
+    test_class_methods, application_classes, _ = common_analysis.categorize_classes()
 
-    yield SimpleNamespace(
+    return SimpleNamespace(
         analysis=analysis,
         dataset_name=dataset_name,
         test_class_methods=test_class_methods,
-        application_class=application_class,
+        application_classes=application_classes,
     )
 
-    duration = time.time() - start_time
-    print(f"\nTest {request.node.nodeid} took {duration:.4f} seconds.")
+
+@pytest.fixture(scope="module")
+def petclinic_data() -> SimpleNamespace:
+    """Shared fixture for spring-petclinic analysis data."""
+    return create_analysis_data("spring-petclinic")
 
 
-def test_hamster(analysis_data):
+@pytest.fixture(scope="module")
+def commons_cli_data() -> SimpleNamespace:
+    """Shared fixture for commons-cli analysis data."""
+    return create_analysis_data("commons-cli")
+
+
+@pytest.fixture(scope="module")
+def commons_bsf_data() -> SimpleNamespace:
+    """Shared fixture for commons-bsf analysis data."""
+    return create_analysis_data("commons-bsf")
+
+
+def test_hamster_petclinic(petclinic_data):
     project_analysis = ProjectAnalysisInfo(
-        analysis=analysis_data.analysis, dataset_name=analysis_data.dataset_name
+        analysis=petclinic_data.analysis, dataset_name=petclinic_data.dataset_name
     ).gather_project_analysis_info()
+    save_project_analysis(petclinic_data.dataset_name, project_analysis)
 
     for test_class_analysis in project_analysis.test_class_analyses:
         assert (
@@ -81,18 +91,96 @@ def test_hamster(analysis_data):
 
     assert project_analysis is not None
 
+    # Verify test class and method counts
+    assert project_analysis.test_class_count == 18
+    assert project_analysis.test_method_count == 58
 
-def test_setup_analysis(analysis_data):
+    # Verify test utility class and method counts
+    # Test utility classes: MysqlTestApplication, EntityUtils, CrashControllerIntegrationTests.TestConfiguration, PostgresIntegrationTests.PropertiesLogger
+    assert project_analysis.test_utility_class_count == 4
+    assert project_analysis.test_utility_method_count == 6
+
+
+def test_hamster_commons_cli(commons_cli_data):
+    project_analysis = ProjectAnalysisInfo(
+        analysis=commons_cli_data.analysis, dataset_name=commons_cli_data.dataset_name
+    ).gather_project_analysis_info()
+    save_project_analysis(commons_cli_data.dataset_name, project_analysis)
+
+    assert project_analysis is not None
+    assert len(project_analysis.test_class_analyses) > 0
+
+    # All commons-cli tests use JUnit5
+    for test_class_analysis in project_analysis.test_class_analyses:
+        assert TestingFramework.JUNIT5 in test_class_analysis.testing_frameworks
+        assert len(test_class_analysis.testing_frameworks) > 0
+
+    # Verify specific test class exists and has expected properties
+    default_parser_test = next(
+        (
+            tc
+            for tc in project_analysis.test_class_analyses
+            if tc.qualified_class_name == "org.apache.commons.cli.DefaultParserTest"
+        ),
+        None,
+    )
+    assert default_parser_test is not None
+    assert len(default_parser_test.test_method_analyses) > 0
+
+
+def test_hamster_commons_bsf(commons_bsf_data):
+    project_analysis = ProjectAnalysisInfo(
+        analysis=commons_bsf_data.analysis, dataset_name=commons_bsf_data.dataset_name
+    ).gather_project_analysis_info()
+    save_project_analysis(commons_bsf_data.dataset_name, project_analysis)
+
+    assert project_analysis is not None
+    assert len(project_analysis.test_class_analyses) > 0
+
+    # All commons-bsf tests use some form of JUnit
+    for test_class_analysis in project_analysis.test_class_analyses:
+        has_junit = any(
+            tf
+            in (
+                TestingFramework.JUNIT3,
+                TestingFramework.JUNIT4,
+                TestingFramework.JUNIT5,
+            )
+            for tf in test_class_analysis.testing_frameworks
+        )
+        assert has_junit, (
+            f"{test_class_analysis.qualified_class_name} has no JUnit framework"
+        )
+        assert len(test_class_analysis.testing_frameworks) > 0
+
+    # Verify EngineUtilsTest exists and has test methods (uses JUnit3)
+    engine_utils_test = next(
+        (
+            tc
+            for tc in project_analysis.test_class_analyses
+            if tc.qualified_class_name == "org.apache.bsf.util.EngineUtilsTest"
+        ),
+        None,
+    )
+    assert engine_utils_test is not None
+    assert TestingFramework.JUNIT3 in engine_utils_test.testing_frameworks
+    assert len(engine_utils_test.test_method_analyses) > 0
+
+    # Verify TestBean is identified as a test utility class
+    assert project_analysis.test_utility_class_count >= 1
+
+
+def test_setup_analysis(petclinic_data):
     qualified_class_name = (
         "org.springframework.samples.petclinic.owner.OwnerControllerTests"
     )
     class_analysis = TestClassAnalysisInfo(
-        analysis=analysis_data.analysis,
-        dataset_name=analysis_data.dataset_name,
-        application_classes=analysis_data.application_class,
+        analysis=petclinic_data.analysis,
+        dataset_name=petclinic_data.dataset_name,
+        application_classes=petclinic_data.application_classes,
     ).get_test_class_analysis(
         qualified_class_name=qualified_class_name,
-        test_methods=analysis_data.test_class_methods[qualified_class_name],
+        test_methods=petclinic_data.test_class_methods[qualified_class_name],
     )
     assert len(class_analysis.setup_analyses) >= 1
     assert (
@@ -105,21 +193,21 @@ def test_setup_analysis(analysis_data):
     )
 
 
-def test_method_analysis(analysis_data):
+def test_method_analysis(petclinic_data):
     qualified_class_name = (
         "org.springframework.samples.petclinic.service.ClinicServiceTests"
     )
     method_signature = "shouldInsertOwner()"
     testing_frameworks = CommonAnalysis(
-        analysis_data.analysis
+        petclinic_data.analysis
     ).get_testing_frameworks_for_class(qualified_class_name=qualified_class_name)
-    setup_methods = SetupAnalysisInfo(analysis_data.analysis).get_setup_methods(
+    setup_methods = SetupAnalysisInfo(petclinic_data.analysis).get_setup_methods(
         qualified_class_name=qualified_class_name,
     )
     method_analysis = TestMethodAnalysisInfo(
-        analysis=analysis_data.analysis,
-        dataset_name=analysis_data.dataset_name,
-        application_classes=analysis_data.application_class,
+        analysis=petclinic_data.analysis,
+        dataset_name=petclinic_data.dataset_name,
+        application_classes=petclinic_data.application_classes,
     ).get_test_method_analysis_info(
         testing_frameworks=testing_frameworks,
         qualified_class_name=qualified_class_name,
@@ -128,92 +216,3 @@ def test_method_analysis(analysis_data):
     )
     assert method_analysis is not None
     assert len(method_analysis.call_assertion_sequences) == 2
-
-
-def test_all_call_and_assertion_sequences(analysis_data):
-    """Quick test to see if call and assertion info can be generated for all test methods in the project."""
-
-    call_and_assertion_info = CallAndAssertionSequenceDetailsInfo(
-        analysis_data.analysis, analysis_data.dataset_name
-    )
-    for qualified_class_name in analysis_data.test_class_methods:
-        testing_frameworks = CommonAnalysis(
-            analysis_data.analysis
-        ).get_testing_frameworks_for_class(qualified_class_name=qualified_class_name)
-        for method_signature in analysis_data.test_class_methods[qualified_class_name]:
-            print(
-                f"Attempting for method {method_signature} with qualified class {qualified_class_name}"
-            )
-            result = (
-                call_and_assertion_info.get_call_and_assertion_sequence_details_info(
-                    qualified_class_name=qualified_class_name,
-                    method_signature=method_signature,
-                    testing_frameworks=testing_frameworks,
-                )
-            )
-            assert result is not None
-
-
-def test_focal_classes(analysis_data):
-    _, all_application_classes = CommonAnalysis(
-        analysis_data.analysis
-    ).get_test_methods_classes_and_application_classes()
-
-    qualified_class_name = "org.springframework.samples.petclinic.model.ValidatorTests"
-    method_signature = "shouldNotValidateWhenFirstNameEmpty()"
-    focal_classes, _, _, _ = FocalClassMethod(
-        analysis_data.analysis
-    ).identify_focal_class_and_ui_api_test(
-        qualified_class_name,
-        method_signature,
-        {},
-    )
-    assert get_focal_class_names(focal_classes) == [
-        "org.springframework.samples.petclinic.model.Person",
-    ]
-
-    qualified_class_name = "org.springframework.samples.petclinic.vet.VetTests"
-    method_signature = "testSerialization()"
-    focal_classes, _, _, _ = FocalClassMethod(
-        analysis_data.analysis
-    ).identify_focal_class_and_ui_api_test(
-        qualified_class_name,
-        method_signature,
-        {},
-    )
-    assert get_focal_class_names(focal_classes) == [
-        "org.springframework.samples.petclinic.vet.Vet",
-    ]
-
-    qualified_class_name = (
-        "org.springframework.samples.petclinic.owner.PetValidatorTests"
-    )
-    method_signature = "testValidate()"
-    FocalClassMethod(analysis_data.analysis).identify_focal_class_and_ui_api_test(
-        qualified_class_name,
-        method_signature,
-        {qualified_class_name: ["setUp()"]},
-    )
-
-    qualified_class_name = (
-        "org.springframework.samples.petclinic.service.ClinicServiceTests"
-    )
-    method_signature = "shouldInsertPetIntoDatabaseAndGenerateId()"
-    focal_classes, _, _, _ = FocalClassMethod(
-        analysis=analysis_data.analysis,
-        application_classes=all_application_classes,
-    ).identify_focal_class_and_ui_api_test(
-        qualified_class_name,
-        method_signature,
-        {},
-    )
-    assert get_focal_class_names(focal_classes) == [
-        "org.springframework.samples.petclinic.owner.OwnerRepository",
-    ]
-
-
-def get_focal_class_names(classes: List[FocalClass]) -> List[str]:
-    focal_class_names = []
-    for cls in classes:
-        focal_class_names.append(cls.focal_class)
-    return focal_class_names

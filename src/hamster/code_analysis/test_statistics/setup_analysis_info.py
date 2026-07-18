@@ -1,17 +1,18 @@
-from typing import List, Dict, Set
+from typing import Dict, List, Set
 
 from cldk.analysis.java import JavaAnalysis
 from cldk.models.java import JCallable
-from .input_analysis import InputAnalysis
 
 from hamster.code_analysis.common import CommonAnalysis, Reachability
 from hamster.code_analysis.model.models import (
+    ExecutionOrder,
+    MockedResource,
+    MockingFramework,
     SetupAnalysis,
     TestingFramework,
-    MockingFramework,
-    MockedResource,
-    ExecutionOrder,
 )
+
+from .input_analysis import InputAnalysis
 
 
 class SetupAnalysisInfo:
@@ -27,6 +28,9 @@ class SetupAnalysisInfo:
 
         Returns:
             Dict[str, List[str]]: Mapping of declaring class to its setup method signatures.
+
+        Raises:
+            ClassNotFoundException: If the class cannot be found.
         """
         reachable_methods = Reachability(self.analysis).get_visible_class_methods(
             qualified_class_name,
@@ -102,6 +106,7 @@ class SetupAnalysisInfo:
         method_signature: str,
         testing_frameworks: List[TestingFramework],
         is_test_method: bool = False,
+        test_utility_classes: List[str] | None = None,
     ) -> SetupAnalysis:
         method_details = self.analysis.get_method(
             qualified_class_name, method_signature
@@ -127,6 +132,7 @@ class SetupAnalysisInfo:
         test_inputs = InputAnalysis(self.analysis).get_input_details(
             qualified_class_name,
             method_signature,
+            test_utility_classes=test_utility_classes,
         )
 
         number_of_mocks_created: int = 0
@@ -155,6 +161,7 @@ class SetupAnalysisInfo:
             method_signature=method_signature,
             add_extended_class=True,
             allow_repetition=True,
+            test_utility_classes=test_utility_classes or [],
         )
 
         all_methods = helper_methods
@@ -259,7 +266,7 @@ class SetupAnalysisInfo:
         return None
 
     def __get_mocking_frameworks(
-        self, test_qualified_class_name: str, test_method_signature: str = None
+        self, test_qualified_class_name: str, test_method_signature: str | None = None
     ) -> List[MockingFramework]:
         """
         List all mocking frameworks used
@@ -271,6 +278,9 @@ class SetupAnalysisInfo:
         """
         mocking_frameworks: List[MockingFramework] = []
         class_details = self.analysis.get_class(test_qualified_class_name)
+        if not class_details:
+            return []
+
         if test_method_signature:
             method_details = self.analysis.get_method(
                 test_qualified_class_name, test_method_signature

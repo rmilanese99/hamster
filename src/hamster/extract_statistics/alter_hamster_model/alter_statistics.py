@@ -7,7 +7,7 @@ from pathlib import Path
 from hamster.extract_statistics.utils import ExtractStatisticsUtils
 
 statistics_dir = "/home/hamster/xvdc/hamster_results/statistics"
-store_dir = '/home/hamster/xvdc/hamster_results/statistics'
+store_dir = "/home/hamster/xvdc/hamster_results/statistics"
 
 
 class StatisticsModelUpdater:
@@ -17,44 +17,66 @@ class StatisticsModelUpdater:
         self.store_dir.mkdir(parents=True, exist_ok=True)
 
     def alter_assertion_details_for_percentages(self):
-        with open(self.statistics_dir / "assertion_details.json", 'r') as f:
+        with open(self.statistics_dir / "assertion_details.json", "r") as f:
             assertion_details = json.load(f)
 
         assertion_counts_by_type_dict = assertion_details["assertion_counts_by_type"]
         assertion_counts_dict = assertion_details["assertion_counts"]
         assertion_pairs_dict = assertion_details["assertion_pairs"]
-        assertion_counts_by_type_per_app_type_dict = assertion_details["assertion_counts_by_type_per_app_type"]
+        assertion_counts_by_type_per_app_type_dict = assertion_details[
+            "assertion_counts_by_type_per_app_type"
+        ]
 
-        assertion_percentages_by_type = ExtractStatisticsUtils.get_percentage_dict(assertion_counts_by_type_dict)
-        assertion_percentages = ExtractStatisticsUtils.get_percentage_dict(assertion_counts_dict)
-        assertion_pair_percentages = ExtractStatisticsUtils.get_percentage_dict(assertion_pairs_dict)
+        assertion_percentages_by_type = ExtractStatisticsUtils.get_percentage_dict(
+            assertion_counts_by_type_dict
+        )
+        assertion_percentages = ExtractStatisticsUtils.get_percentage_dict(
+            assertion_counts_dict
+        )
+        assertion_pair_percentages = ExtractStatisticsUtils.get_percentage_dict(
+            assertion_pairs_dict
+        )
         assertion_percentages_by_type_per_app_type = {
-            app_type: ExtractStatisticsUtils.get_percentage_dict(assertion_count_type_dict)
+            app_type: ExtractStatisticsUtils.get_percentage_dict(
+                assertion_count_type_dict
+            )
             for app_type, assertion_count_type_dict in assertion_counts_by_type_per_app_type_dict.items()
         }
 
-        assertion_details["assertion_percentages_by_type"] = assertion_percentages_by_type
+        assertion_details["assertion_percentages_by_type"] = (
+            assertion_percentages_by_type
+        )
         assertion_details["assertion_percentages"] = assertion_percentages
         assertion_details["assertion_pair_percentages"] = assertion_pair_percentages
-        assertion_details["assertion_percentages_by_type_per_app_type"] = assertion_percentages_by_type_per_app_type
+        assertion_details["assertion_percentages_by_type_per_app_type"] = (
+            assertion_percentages_by_type_per_app_type
+        )
 
         self.save("new_assertion_details.json", assertion_details)
 
     def alter_input_details_for_percentages(self):
-        with open(self.statistics_dir / "test_input_details_v2.json", 'r') as f:
+        with open(self.statistics_dir / "test_input_details_v2.json", "r") as f:
             test_input_details = json.load(f)
 
         test_input_counts_by_type_dict = test_input_details["test_input_counts_by_type"]
-        test_input_counts_by_type_per_app_type_dict = test_input_details["test_input_counts_by_type_per_app_type"]
+        test_input_counts_by_type_per_app_type_dict = test_input_details[
+            "test_input_counts_by_type_per_app_type"
+        ]
 
-        test_input_percentages_by_type = ExtractStatisticsUtils.get_percentage_dict(test_input_counts_by_type_dict)
+        test_input_percentages_by_type = ExtractStatisticsUtils.get_percentage_dict(
+            test_input_counts_by_type_dict
+        )
         test_input_percentages_by_type_per_app_type = {
             app_type: ExtractStatisticsUtils.get_percentage_dict(input_count_dict)
             for app_type, input_count_dict in test_input_counts_by_type_per_app_type_dict.items()
         }
 
-        test_input_details["test_input_percentages_by_type"] = test_input_percentages_by_type
-        test_input_details["test_input_percentages_by_type_per_app_type"] = test_input_percentages_by_type_per_app_type
+        test_input_details["test_input_percentages_by_type"] = (
+            test_input_percentages_by_type
+        )
+        test_input_details["test_input_percentages_by_type_per_app_type"] = (
+            test_input_percentages_by_type_per_app_type
+        )
 
         self.save("new_test_input_details.json", test_input_details)
 
@@ -62,7 +84,7 @@ class StatisticsModelUpdater:
         """
         Save the altered statistics to file
         """
-        with open(self.store_dir / file_name, 'w') as f:
+        with open(self.store_dir / file_name, "w") as f:
             print("Saving to ", str(self.store_dir / file_name))
             f.write(json.dumps(details))
 
@@ -73,5 +95,5 @@ def alter_statistics_model():
     alterer.alter_input_details_for_percentages()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     alter_statistics_model()

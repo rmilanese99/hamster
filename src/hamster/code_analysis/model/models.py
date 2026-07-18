@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import List, Any, Union, Optional
+from typing import Annotated, Any, List, Literal, Union
 
 from pydantic import BaseModel, Field
 
@@ -19,6 +19,7 @@ class ExecutionOrder(Enum):
     BEFORE_CLASS = "before-class"
     AFTER_EACH_TEST = "after-each-test"
     AFTER_CLASS = "after-class"
+
 
 class CleanupType(Enum):
     INPUT_OUTPUT = "input-output"
@@ -63,8 +64,8 @@ class TestingFramework(Enum):
     REST_ASSURED = "rest-assured"
     WEBTESTCLIENT = "webtestclient"
     MOCKMVC = "mockmvc"
-    ESPRESSO = "espresso" # Part of Androidx
-    UI_AUTOMATOR = "ui-automator" # Part of Androidx
+    ESPRESSO = "espresso"  # Part of Androidx
+    UI_AUTOMATOR = "ui-automator"  # Part of Androidx
     ROBOLECTRIC = "robolectric"
     JETPACK = "jetpack"
     ANDROIDX_TEST = "androidx-test"
@@ -112,6 +113,7 @@ class AssertionType(Enum):
     WRAPPER = "wrapper"  # For assertThat
     UTILITY = "utility"  # For things like assigning assertion returns ("as" in AssertJ)
 
+
 class MockedResource(Enum):
     DB = "db"
     FILE = "file"
@@ -119,8 +121,10 @@ class MockedResource(Enum):
     LIBRARY_CLASS = "library-class"
     SERVICE = "service"
 
+
 class AssertionDetails(BaseModel):
     """Represents information about an assertion."""
+
     assertion_type: List[AssertionType]
     assertion_name: str
     assertion_code: str | None
@@ -128,8 +132,10 @@ class AssertionDetails(BaseModel):
     in_helper: bool | None = None
     is_wrapped: bool | None = None
 
+
 class CallableDetails(BaseModel):
     """Represents information about a method/constructor call."""
+
     method_name: str
     argument_types: List[str] = []
     receiver_type: str | None = None
@@ -137,14 +143,17 @@ class CallableDetails(BaseModel):
     secondary_assertion: bool = False
     is_helper: bool = False
 
+
 class CleanupDetails(CallableDetails):
     """Represents information about a cleanup method call."""
+
     receiver_type: str
     canonical_cleanup_method: str
     cleanup_type: List[CleanupType] | None
 
+
 class InputType(Enum):
-    PROPERTIES = "properties" # java.util.Properties
+    PROPERTIES = "properties"  # java.util.Properties
     YAML = "yaml"
     JSON = "json"
     XML = "xml"
@@ -154,23 +163,57 @@ class InputType(Enum):
     HTML = "html"
     BINARY = "binary"
     SERIALIZED = "serialized"
-    RESOURCE = "resource" # Classpath-based resources
+    PROTOBUF = "protobuf"
+    AVRO = "avro"
+    RESOURCE = "resource"  # Classpath-based resources
 
-class TestInput(BaseModel):
-    """Represents information about a test input."""
+
+class AnnotationScope(Enum):
+    METHOD = "method"
+    CLASS = "class"
+
+
+class CallSiteTestInput(BaseModel):
+    """Test input detected from a method/constructor call site."""
+
+    detection_source: Literal["call-site"] = "call-site"
     method_name: str = ""
     method_signature: str = ""
     receiver_type: str | None = None
     receiver_expr: str | None = None
     input_type: List[InputType] | None = None
+    source_class: str | None = None
+    source_method: str | None = None
+
+
+class AnnotationTestInput(BaseModel):
+    """Test input detected from a class or method annotation."""
+
+    detection_source: Literal["annotation"] = "annotation"
+    annotation: str = ""
+    annotation_name: str = ""
+    scope: AnnotationScope = AnnotationScope.METHOD
+    input_type: List[InputType] | None = None
+    source_class: str | None = None
+    source_method: str | None = None
+
+
+TestInput = Annotated[
+    Union[CallSiteTestInput, AnnotationTestInput],
+    Field(discriminator="detection_source"),
+]
+
 
 class CallAndAssertionSequenceDetails(BaseModel):
     """Represents information about call and assertion sequences"""
+
     call_sequence_details: List[CallableDetails] = []
     assertion_details: List[AssertionDetails] = []
 
+
 class FixtureAnalysis(BaseModel):
     """Shared properties for setup and teardown analysis."""
+
     qualified_class_name: str = ""
     method_signature: str
     ncloc: int = 0
@@ -185,26 +228,34 @@ class FixtureAnalysis(BaseModel):
     application_call_details: List[CallableDetails] | None = None
     library_call_details: List[CallableDetails] | None = None
 
+
 class SetupAnalysis(FixtureAnalysis):
     """Represents information about test setup."""
+
     number_of_mocks_created: int = 0
     mocking_frameworks_used: List[MockingFramework] | None = None
     mocked_resources: List[MockedResource] | None = None
     test_inputs: List[TestInput] | None = None
 
+
 class TeardownAnalysis(FixtureAnalysis):
     """Represents information about test teardown."""
+
     number_of_assertions: int = 0
-    number_of_cleanup_calls: int = 0 # Tracks operation halts (.stop()), file connection release (.close()), etc...
+    number_of_cleanup_calls: int = 0  # Tracks operation halts (.stop()), file connection release (.close()), etc...
     cleanup_details: List[CleanupDetails] | None = None
 
-class FocalClass(BaseModel):
-    """Represents a focal class"""
-    focal_class: str | None = None
-    focal_method_names: List[str] | None = None
+
+class FocalClassInfo(BaseModel):
+    """Represents a focal class and its tested methods."""
+
+    focal_class: str
+    focal_method_names: List[str]
+
 
 class TestMethodAnalysis(BaseModel):
     """Represents information about a test method."""
+
     qualified_class_name: str
     method_signature: str
     method_declaration: str
@@ -228,10 +279,12 @@ class TestMethodAnalysis(BaseModel):
     library_call_details: List[CallableDetails] | None = None
     call_assertion_sequences: List[CallAndAssertionSequenceDetails] | None = None
     is_bdd: bool = False
-    focal_classes: List[FocalClass] | None = None
+    focal_classes: List[FocalClassInfo] | None = None
+
 
 class TestClassAnalysis(BaseModel):
     """Represents information about a test class."""
+
     qualified_class_name: str
     testing_frameworks: List[TestingFramework]
     setup_analyses: List[SetupAnalysis] | None = None
@@ -243,15 +296,22 @@ class TestClassAnalysis(BaseModel):
 
 class ProjectAnalysis(BaseModel):
     """Represents all analysis information about a Java application."""
+
     dataset_name: str
     application_class_count: int
     application_method_count: int
     application_cyclomatic_complexity: int
     application_types: List[AppType]
+    test_class_count: int
+    test_method_count: int
+    test_utility_class_count: int
+    test_utility_method_count: int
     test_class_analyses: List[TestClassAnalysis]
+
 
 class ParameterType(Enum):
     """Defines the available types for parameters to be classified in assertions."""
+
     STRING = "string"
     NUMBER = "number"
     BOOLEAN = "boolean"

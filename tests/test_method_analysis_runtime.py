@@ -1,11 +1,10 @@
 import cProfile
 import io
+import pstats
 import time
 from pathlib import Path
 
 import pytest
-import pstats
-
 from cldk import CLDK
 from cldk.analysis import AnalysisLevel
 
@@ -19,7 +18,7 @@ from hamster.code_analysis.test_statistics import (
 
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_PATH_RELATIVE = "resources/spring-petclinic"
-ANALYSIS_JSON_PATH_RELATIVE = "resources/output/spring-petclinic"
+ANALYSIS_JSON_PATH_RELATIVE = "output/spring-petclinic"
 PROJECT_PATH = str(BASE_DIR / PROJECT_PATH_RELATIVE)
 ANALYSIS_JSON_PATH = str(BASE_DIR / ANALYSIS_JSON_PATH_RELATIVE)
 DATASET_NAME = "spring-petclinic"
@@ -37,7 +36,7 @@ def analysis():
 
 @pytest.fixture(scope="module")
 def test_class_data(analysis):
-    return CommonAnalysis(analysis).get_test_methods_classes_and_application_classes()
+    return CommonAnalysis(analysis).categorize_classes()
 
 
 @pytest.fixture(scope="module")
@@ -92,14 +91,20 @@ def test_all_get_ncloc(profiled_time_tracker, analysis, test_class_methods):
     for qualified_class_name, methods in test_class_methods.items():
         for method_signature in methods:
             method_details = analysis.get_method(qualified_class_name, method_signature)
-            ncloc = common_analysis.get_ncloc(method_details.declaration, method_details.code)
+            ncloc = common_analysis.get_ncloc(
+                method_details.declaration, method_details.code
+            )
             assert ncloc > 0
 
 
-def test_all_get_input_details(profiled_time_tracker, input_analysis, test_class_methods):
+def test_all_get_input_details(
+    profiled_time_tracker, input_analysis, test_class_methods
+):
     for qualified_class_name, methods in test_class_methods.items():
         for method_signature in methods:
-            test_inputs = input_analysis.get_input_details(qualified_class_name, method_signature)
+            test_inputs = input_analysis.get_input_details(
+                qualified_class_name, method_signature
+            )
             assert test_inputs is not None
 
 
@@ -120,20 +125,28 @@ def test_all_is_mocking_used(profiled_time_tracker, analysis, test_class_methods
     common_analysis = CommonAnalysis(analysis)
     for qualified_class_name, methods in test_class_methods.items():
         for method_signature in methods:
-            mock_count = common_analysis.is_mocking_used(qualified_class_name, method_signature)
+            mock_count = common_analysis.is_mocking_used(
+                qualified_class_name, method_signature
+            )
             assert isinstance(mock_count, int)
 
 
-def test_all_get_constructor_call_details(profiled_time_tracker, analysis, test_class_methods):
+def test_all_get_constructor_call_details(
+    profiled_time_tracker, analysis, test_class_methods
+):
     common_analysis = CommonAnalysis(analysis)
     for qualified_class_name, methods in test_class_methods.items():
         for method_signature in methods:
             method_details = analysis.get_method(qualified_class_name, method_signature)
-            constructor_details = common_analysis.get_constructor_call_details(method_details)
+            constructor_details = common_analysis.get_constructor_call_details(
+                method_details
+            )
             assert isinstance(constructor_details, list)
 
 
-def test_all_get_application_call_details(profiled_time_tracker, analysis, test_class_methods):
+def test_all_get_application_call_details(
+    profiled_time_tracker, analysis, test_class_methods
+):
     common_analysis = CommonAnalysis(analysis)
     for qualified_class_name, methods in test_class_methods.items():
         for method_signature in methods:
@@ -142,7 +155,9 @@ def test_all_get_application_call_details(profiled_time_tracker, analysis, test_
             assert isinstance(app_details, list)
 
 
-def test_all_get_library_call_details(profiled_time_tracker, analysis, test_class_methods):
+def test_all_get_library_call_details(
+    profiled_time_tracker, analysis, test_class_methods
+):
     common_analysis = CommonAnalysis(analysis)
     for qualified_class_name, methods in test_class_methods.items():
         for method_signature in methods:
@@ -159,7 +174,9 @@ def test_all_get_setup_method_details(
 ):
     common_analysis = CommonAnalysis(analysis)
     for qualified_class_name, methods in test_class_methods.items():
-        testing_frameworks = common_analysis.get_testing_frameworks_for_class(qualified_class_name)
+        testing_frameworks = common_analysis.get_testing_frameworks_for_class(
+            qualified_class_name
+        )
         for method_signature in methods:
             mocked_details = setup_analysis.get_setup_method_details(
                 qualified_class_name=qualified_class_name,
@@ -178,12 +195,16 @@ def test_all_get_call_and_assertion_sequence_details_info(
 ):
     common_analysis = CommonAnalysis(analysis)
     for qualified_class_name, methods in test_class_methods.items():
-        testing_frameworks = common_analysis.get_testing_frameworks_for_class(qualified_class_name)
+        testing_frameworks = common_analysis.get_testing_frameworks_for_class(
+            qualified_class_name
+        )
         for method_signature in methods:
-            result = call_and_assertion_info.get_call_and_assertion_sequence_details_info(
-                qualified_class_name=qualified_class_name,
-                method_signature=method_signature,
-                testing_frameworks=testing_frameworks,
+            result = (
+                call_and_assertion_info.get_call_and_assertion_sequence_details_info(
+                    qualified_class_name=qualified_class_name,
+                    method_signature=method_signature,
+                    testing_frameworks=testing_frameworks,
+                )
             )
             assert result is not None
 
@@ -197,8 +218,12 @@ def test_all_get_test_type_focal_classes(
 ):
     common_analysis = CommonAnalysis(analysis)
     for qualified_class_name, methods in test_class_methods.items():
-        testing_frameworks = common_analysis.get_testing_frameworks_for_class(qualified_class_name)
-        setup_methods = setup_analysis.get_setup_methods(qualified_class_name=qualified_class_name)
+        testing_frameworks = common_analysis.get_testing_frameworks_for_class(
+            qualified_class_name
+        )
+        setup_methods = setup_analysis.get_setup_methods(
+            qualified_class_name=qualified_class_name
+        )
         for method_signature in methods:
             test_type, focal_classes = test_method_analysis.get_test_type_focal_classes(
                 qualified_class_name,
@@ -217,8 +242,12 @@ def test_all_get_test_method_analysis_info(
 ):
     common_analysis = CommonAnalysis(analysis)
     for qualified_class_name, methods in test_class_methods.items():
-        testing_frameworks = common_analysis.get_testing_frameworks_for_class(qualified_class_name)
-        setup_methods = setup_analysis.get_setup_methods(qualified_class_name=qualified_class_name)
+        testing_frameworks = common_analysis.get_testing_frameworks_for_class(
+            qualified_class_name
+        )
+        setup_methods = setup_analysis.get_setup_methods(
+            qualified_class_name=qualified_class_name
+        )
         for method_signature in methods:
             result = test_method_analysis.get_test_method_analysis_info(
                 testing_frameworks,
